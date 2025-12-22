@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <include file="$(find-pkg-share find_cubes)/launch/camera_36h11.launch.yml" />
+
+  <node pkg="find_cubes" exec="find_cubes_nodes" name="find_cubes_position_node" output="screen" />
+
+   
+</launch>

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(find_goal)
+project(find_cubes)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -17,12 +17,12 @@ find_package(tf2_geometry_msgs REQUIRED)
 
 include_directories(include)
 
-add_executable(find_goal_nodes
-  src/find_goal_position_node.cpp
+add_executable(find_cubes_nodes
+  src/find_cubes_position_node.cpp
   src/main.cpp
 )
 
-ament_target_dependencies(find_goal_nodes
+ament_target_dependencies(find_cubes_nodes
   rclcpp
   sensor_msgs
   apriltag_msgs
@@ -33,7 +33,7 @@ ament_target_dependencies(find_goal_nodes
 )
 
 install(TARGETS
-  find_goal_nodes
+  find_cubes_nodes
   DESTINATION lib/${PROJECT_NAME}
 )
 

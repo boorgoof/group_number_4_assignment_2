@@ -1,4 +1,7 @@
 <launch>
 
     <include file="$(find-pkg-share ir_launch)/launch/assignment_2.launch.py"/>
+
+    <include file="$(find-pkg-share find_cubes)/launch/find_cubes.launch.xml"/>
+
 </launch>
