@@ -1,0 +1,4 @@
+<launch>
+
+    <include file="$(find-pkg-share ir_launch)/launch/assignment_2.launch.py"/>
+</launch>
