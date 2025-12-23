@@ -25,7 +25,7 @@ launch:
               to: /apriltag/detections
 
           param:
-            - from: $(find-pkg-share find_goal)/cfg/tags_36h11.yaml
+            - from: $(find-pkg-share find_cubes)/cfg/tags_36h11.yaml
      
           extra_arg:
             - name: use_intra_process_comms
