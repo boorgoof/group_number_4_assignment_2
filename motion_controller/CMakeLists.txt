@@ -19,6 +19,32 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES geometry_msgs
 )
 
+add_executable(robot_manipulator_node
+  src/main.cpp
+  src/robot_manipulator.cpp
+)
+
+target_include_directories(robot_manipulator_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(robot_manipulator_node
+  rclcpp
+  moveit_ros_planning_interface
+  geometry_msgs
+  tf2_ros
+)
+
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
+
+find_package(CURL REQUIRED)
+target_link_libraries(robot_manipulator_node "${cpp_typesupport_target}" ${CURL_LIBRARIES})
+
+install(TARGETS robot_manipulator_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
