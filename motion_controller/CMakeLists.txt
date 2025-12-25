@@ -15,7 +15,8 @@ find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/SwapCubes.srv"
+  "action/GoHome.action"
+  "action/MoveCube.action"
   DEPENDENCIES geometry_msgs
 )
 

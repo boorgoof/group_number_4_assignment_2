@@ -1,5 +1,0 @@
-geometry_msgs/Pose pose_a
-geometry_msgs/Pose pose_b
----
-bool success
-string message

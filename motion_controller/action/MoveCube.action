@@ -1,0 +1,13 @@
+# Goal
+geometry_msgs/Pose pose_from
+geometry_msgs/Pose pose_to
+bool use_waypoint
+geometry_msgs/Pose waypoint_pose
+float64 waypoint_wait_time
+---
+# Result
+bool success
+string message
+---
+# Feedback
+string current_state

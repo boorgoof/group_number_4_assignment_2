@@ -1,5 +1,8 @@
 #include "motion_controller/robot_manipulator.hpp"
 
+using std::placeholders::_1;
+using std::placeholders::_2;
+
 RobotManipulator::RobotManipulator(const rclcpp::NodeOptions& options)
     : Node("robot_manipulator", options)
 {
@@ -8,12 +11,21 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions& options)
     approach_offset_ = 0.20;
     grasp_height_ = 0.05;
 
-    using namespace std::placeholders;
-    swap_service_ = this->create_service<motion_controller::srv::SwapCubes>(
-        "swap_cubes",
-        std::bind(&RobotManipulator::swap_callback, this, _1, _2));
+    go_home_action_server_ = rclcpp_action::create_server<GoHome>(
+        this,
+        "go_home",
+        std::bind(&RobotManipulator::handle_go_home_goal, this, _1, _2),
+        std::bind(&RobotManipulator::handle_go_home_cancel, this, _1),
+        std::bind(&RobotManipulator::handle_go_home_accepted, this, _1));
 
-    RCLCPP_INFO(this->get_logger(), "RobotManipulator initialized, waiting for MoveIt setup...");
+    move_cube_action_server_ = rclcpp_action::create_server<MoveCube>(
+        this,
+        "move_cube",
+        std::bind(&RobotManipulator::handle_move_cube_goal, this, _1, _2),
+        std::bind(&RobotManipulator::handle_move_cube_cancel, this, _1),
+        std::bind(&RobotManipulator::handle_move_cube_accepted, this, _1));
+
+    RCLCPP_INFO(this->get_logger(), "RobotManipulator initialized");
 }
 
 void RobotManipulator::init_moveit()
@@ -27,71 +39,140 @@ void RobotManipulator::init_moveit()
     arm_group_->setPlanningTime(10.0);
     arm_group_->setNumPlanningAttempts(10);
     
-    RCLCPP_INFO(this->get_logger(), "RobotManipulator ready");
+    RCLCPP_INFO(this->get_logger(), "MoveIt ready");
 }
 
-void RobotManipulator::swap_callback(
-    const std::shared_ptr<motion_controller::srv::SwapCubes::Request> request,
-    std::shared_ptr<motion_controller::srv::SwapCubes::Response> response)
+// GoHome action handlers
+rclcpp_action::GoalResponse RobotManipulator::handle_go_home_goal(
+    const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const GoHome::Goal> goal)
 {
-    RCLCPP_INFO(this->get_logger(), "Swap service called");
-    //we have to understand a good position
-    geometry_msgs::msg::Pose safe_pose;
-    safe_pose.position.x = 0.0;
-    safe_pose.position.y = 0.0;
-    safe_pose.position.z = 0.0;
-    safe_pose.orientation.w = 0.0;
-    safe_pose.orientation.x = 0.0;
-    safe_pose.orientation.y = 0.0;
-    safe_pose.orientation.z = 0.0;
+    (void)uuid;
+    (void)goal;
+    RCLCPP_INFO(this->get_logger(), "Received go_home goal request");
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
 
-    // 1. Home
+rclcpp_action::CancelResponse RobotManipulator::handle_go_home_cancel(
+    const std::shared_ptr<GoHomeGoalHandle> goal_handle)
+{
+    (void)goal_handle;
+    RCLCPP_INFO(this->get_logger(), "Received cancel request for go_home");
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void RobotManipulator::handle_go_home_accepted(
+    const std::shared_ptr<GoHomeGoalHandle> goal_handle)
+{
+    std::thread{std::bind(&RobotManipulator::execute_go_home, this, goal_handle)}.detach();
+}
+
+void RobotManipulator::execute_go_home(
+    const std::shared_ptr<GoHomeGoalHandle> goal_handle)
+{
+    RCLCPP_INFO(this->get_logger(), "Executing go_home action");
+    
+    auto feedback = std::make_shared<GoHome::Feedback>();
+    auto result = std::make_shared<GoHome::Result>();
+
+    feedback->current_state = "Moving to home position";
+    goal_handle->publish_feedback(feedback);
+
     if (!go_to_home()) {
-        response->success = false;
-        response->message = "Failed to go home";
+        result->success = false;
+        result->message = "Failed to move to home position";
+        goal_handle->abort(result);
         return;
     }
 
-    // 2. Pick A
-    if (!pick_operation(request->pose_a)) {
-        RCLCPP_WARN(this->get_logger(), "Pick A failed, continuing anyway");
+    feedback->current_state = "Opening gripper";
+    goal_handle->publish_feedback(feedback);
+
+    if (!set_gripper(true)) {
+        RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
     }
 
-    // 3. Place A at buffer
-    if (!place_operation(safe_pose)) {
-        RCLCPP_WARN(this->get_logger(), "Place buffer failed, continuing");
+    feedback->current_state = "Completed";
+    goal_handle->publish_feedback(feedback);
+
+    result->success = true;
+    result->message = "Robot at home position with gripper open";
+    goal_handle->succeed(result);
+    
+    RCLCPP_INFO(this->get_logger(), "Go home action completed");
+}
+
+rclcpp_action::GoalResponse RobotManipulator::handle_move_cube_goal(
+    const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const MoveCube::Goal> goal)
+{
+    (void)uuid;
+    (void)goal;
+    RCLCPP_INFO(this->get_logger(), "Received move_cube goal request");
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse RobotManipulator::handle_move_cube_cancel(
+    const std::shared_ptr<MoveCubeGoalHandle> goal_handle)
+{
+    (void)goal_handle;
+    RCLCPP_INFO(this->get_logger(), "Received cancel request for move_cube");
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void RobotManipulator::handle_move_cube_accepted(
+    const std::shared_ptr<MoveCubeGoalHandle> goal_handle)
+{
+    std::thread{std::bind(&RobotManipulator::execute_move_cube, this, goal_handle)}.detach();
+}
+
+void RobotManipulator::execute_move_cube(
+    const std::shared_ptr<MoveCubeGoalHandle> goal_handle)
+{
+    RCLCPP_INFO(this->get_logger(), "Executing move_cube action");
+    
+    const auto goal = goal_handle->get_goal();
+    auto feedback = std::make_shared<MoveCube::Feedback>();
+    auto result = std::make_shared<MoveCube::Result>();
+
+    feedback->current_state = "Picking cube";
+    goal_handle->publish_feedback(feedback);
+
+    if (!pick_operation(goal->pose_from)) {
+        RCLCPP_WARN(this->get_logger(), "Pick operation failed, continuing anyway");
     }
 
-    // 4. Pick B
-    if (!pick_operation(request->pose_b)) {
-        RCLCPP_WARN(this->get_logger(), "Pick B failed, continuing anyway");
+    if (goal->use_waypoint) {
+        feedback->current_state = "Moving to waypoint";
+        goal_handle->publish_feedback(feedback);
+
+        if (!go_to_pose(goal->waypoint_pose)) {
+            RCLCPP_WARN(this->get_logger(), "Failed to reach waypoint");
+        }
+
+        feedback->current_state = "Waiting at waypoint";
+        goal_handle->publish_feedback(feedback);
+
+        auto wait_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<double>(goal->waypoint_wait_time));
+        rclcpp::sleep_for(wait_duration);
     }
 
-    // 5. Place B at A
-    if (!place_operation(request->pose_a)) {
-        RCLCPP_WARN(this->get_logger(), "Place A failed, continuing");
+    feedback->current_state = "Placing cube";
+    goal_handle->publish_feedback(feedback);
+
+    if (!place_operation(goal->pose_to)) {
+        RCLCPP_WARN(this->get_logger(), "Place operation failed, continuing anyway");
     }
 
-    // 6. Pick A from buffer
-    if (!pick_operation(safe_pose)) {
-        RCLCPP_WARN(this->get_logger(), "Pick buffer failed, continuing");
-    }
+    feedback->current_state = "Completed";
+    goal_handle->publish_feedback(feedback);
 
-    // 7. Place A at B
-    if (!place_operation(request->pose_b)) {
-        RCLCPP_WARN(this->get_logger(), "Place B failed, continuing");
-    }
-
-    // 8. Home
-    if (!go_to_home()) {
-        response->success = false;
-        response->message = "Failed to return home";
-        return;
-    }
-
-    response->success = true;
-    response->message = "Swap completed";
-    RCLCPP_INFO(this->get_logger(), "Swap operation completed");
+    result->success = true;
+    result->message = "Cube moved successfully";
+    goal_handle->succeed(result);
+    
+    RCLCPP_INFO(this->get_logger(), "Move cube action completed");
 }
 
 bool RobotManipulator::go_to_home()
