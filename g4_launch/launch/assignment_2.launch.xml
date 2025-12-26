@@ -4,4 +4,6 @@
 
     <include file="$(find-pkg-share find_cubes)/launch/find_cubes.launch.xml"/>
 
+    <node pkg="motion_controller" exec="robot_manipulator_node" name="robot_manipulator" output="screen"/>
+
 </launch>
