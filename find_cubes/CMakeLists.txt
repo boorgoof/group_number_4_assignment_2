@@ -43,8 +43,8 @@ ament_target_dependencies(find_cubes_nodes
 )
 
 
-rosidl_target_interfaces(find_cubes_nodes
-  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(find_cubes_nodes ${cpp_typesupport_target})
 
 
 install(TARGETS

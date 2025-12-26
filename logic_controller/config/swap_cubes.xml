@@ -1,0 +1,28 @@
+<root BTCPP_format="4">
+    <BehaviorTree ID="MainTree">
+        <Sequence name="SwapRoutine">
+            <Action ID="GoHome"/>
+            
+            <RetryUntilSuccessful num_attempts="5">
+                <Action ID="GetCubesPoses" cube1_pose="{cube1_pose}" cube2_pose="{cube2_pose}"/>
+            </RetryUntilSuccessful>
+
+            <Fallback name="SwapWithRecovery">
+                <Sequence name="SwapSteps">
+                    <Action ID="MoveCube" from="{cube1_pose}" to="0.4;0.4;0.2;0;0;0;1" use_waypoint="true", waypoint_pose="", waypoint_wait_time="2000"/>
+                    
+                    <Action ID="MoveCube" from="{cube2_pose}" to="{cube1_pose}" use_waypoint="true", waypoint_pose="", waypoint_wait_time="2000"/>
+                    
+                    <Action ID="MoveCube" from="0.4;0.4;0.2;0;0;0;1" to="{cube2_pose}" use_waypoint="false"/>
+                </Sequence>
+
+                <Sequence name="RecoveryLogic">
+                    <Action ID="GoHome"/>
+                    <AlwaysFailure/>
+                </Sequence>
+            </Fallback>
+
+            <Action ID="GoHome"/>
+        </Sequence>
+    </BehaviorTree>
+</root>
