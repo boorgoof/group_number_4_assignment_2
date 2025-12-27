@@ -1,10 +1,22 @@
 <launch>
+    <arg name="sim" default="true"/>
 
-    <include file="$(find-pkg-share ir_launch)/launch/assignment_2.launch.py"/>
+    <include file="$(find-pkg-share ir_launch)/launch/assignment_2.launch.py">
+        <arg name="use_sim_time" value="$(var sim)"/>
+    </include>
 
-    <include file="$(find-pkg-share find_cubes)/launch/find_cubes.launch.xml"/>
+    <include file="$(find-pkg-share find_cubes)/launch/find_cubes.launch.xml">
+        <arg name="use_sim_time" value="$(var sim)"/>
+    </include>
 
-    <node pkg="motion_controller" exec="robot_manipulator_node" name="robot_manipulator" output="screen"/>
+    <node pkg="motion_controller" exec="robot_manipulator_node" name="robot_manipulator" output="screen">
+        <param name="use_sim_time" value="$(var sim)"/>
+    </node>
 
-    <include file="$(find-pkg-share logic_controller)/launch/robot_logic_controller_node.launch.xml"/>
+    <node pkg="logic_controller" exec="robot_logic_controller_node" 
+          name="robot_logic_controller_node" 
+          output="screen" 
+          launch-prefix="bash -c 'sleep 20.0; $0 $@' ">
+        <param name="use_sim_time" value="$(var sim)"/>
+    </node>
 </launch>

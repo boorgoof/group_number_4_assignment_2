@@ -9,9 +9,9 @@
 
             <Fallback name="SwapWithRecovery">
                 <Sequence name="SwapSteps">
-                    <Action ID="MoveCube" from="{cube1_pose}" to="0.4;0.4;0.2;0;0;0;1" use_waypoint="true", waypoint_pose="", waypoint_wait_time="2000"/>
+                    <Action ID="MoveCube" from="{cube1_pose}" to="0.4;0.4;0.2;0;0;0;1" use_waypoint="true" waypoint_pose="0.3;0.3;0.3;0.3;0.3;0.3;1" waypoint_wait_time="2.0"/>
                     
-                    <Action ID="MoveCube" from="{cube2_pose}" to="{cube1_pose}" use_waypoint="true", waypoint_pose="", waypoint_wait_time="2000"/>
+                    <Action ID="MoveCube" from="{cube2_pose}" to="{cube1_pose}" use_waypoint="true" waypoint_pose="0.3;0.3;0.3;0.3;0.3;0.3;1" waypoint_wait_time="2.0"/>
                     
                     <Action ID="MoveCube" from="0.4;0.4;0.2;0;0;0;1" to="{cube2_pose}" use_waypoint="false"/>
                 </Sequence>
