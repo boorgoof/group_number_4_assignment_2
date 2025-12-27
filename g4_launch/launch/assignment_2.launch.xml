@@ -16,7 +16,7 @@
     <node pkg="logic_controller" exec="robot_logic_controller_node" 
           name="robot_logic_controller_node" 
           output="screen" 
-          launch-prefix="bash -c 'sleep 20.0; $0 $@' ">
+          launch-prefix="bash -c 'sleep 10.0; $0 $@' ">
         <param name="use_sim_time" value="$(var sim)"/>
     </node>
 </launch>

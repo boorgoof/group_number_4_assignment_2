@@ -6,7 +6,7 @@
 int main(int argc, char ** argv) {
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("robot_controller_bt");
-    RCLCPP_INFO(node->get_logger(), "\n\n\n\n\n\n\n\n\ncreated!");
+    RCLCPP_INFO(node->get_logger(), "created!");
     BT::BehaviorTreeFactory factory;
 
     factory.registerBuilder<MoveCubeAction>("MoveCube", 

@@ -39,6 +39,7 @@ class MoveCubeAction : public StatefulActionNode {
 public:
     MoveCubeAction(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
+        RCLCPP_INFO(this->node_->get_logger(), "creating MoveCubeAction");
         client_ = rclcpp_action::create_client<motion_controller::action::MoveCube>(node_, "move_cube");
     }
 
@@ -53,7 +54,8 @@ public:
     }
 
     NodeStatus onStart() override {
-        if (!client_->wait_for_action_server(std::chrono::seconds(2))) return NodeStatus::FAILURE;
+        RCLCPP_INFO(this->node_->get_logger(), "starting MoveCubeAction");
+        if (!client_->wait_for_action_server(std::chrono::seconds(10))) return NodeStatus::FAILURE;
 
         auto goal = motion_controller::action::MoveCube::Goal();
 
@@ -84,6 +86,7 @@ public:
     }
 
     NodeStatus onRunning() override {
+        RCLCPP_INFO(this->node_->get_logger(), "running MoveCubeAction");
         if (!done_) return NodeStatus::RUNNING;
         return success_ ? NodeStatus::SUCCESS : NodeStatus::FAILURE;
     }
@@ -101,13 +104,15 @@ class GoHomeAction : public StatefulActionNode {
 public:
     GoHomeAction(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
+        RCLCPP_INFO(this->node_->get_logger(), "creating GoHomeAction");
         client_ = rclcpp_action::create_client<motion_controller::action::GoHome>(node_, "go_home");
     }
 
     static PortsList providedPorts() { return {}; }
 
     NodeStatus onStart() override {
-        if (!client_->wait_for_action_server(std::chrono::seconds(2))) {
+        RCLCPP_INFO(this->node_->get_logger(), "starting GoHomeAction");
+        if (!client_->wait_for_action_server(std::chrono::seconds(10))) {
             return NodeStatus::FAILURE;
         }
 
@@ -125,7 +130,7 @@ public:
         return NodeStatus::RUNNING;
     }
 
-    NodeStatus onRunning() override { return done_ ? (success_ ? NodeStatus::SUCCESS : NodeStatus::FAILURE) : NodeStatus::RUNNING; }
+    NodeStatus onRunning() override { RCLCPP_INFO(this->node_->get_logger(), "running GoHomeAction"); return done_ ? (success_ ? NodeStatus::SUCCESS : NodeStatus::FAILURE) : NodeStatus::RUNNING; }
     void onHalted() override {}
 
 private:
@@ -134,29 +139,66 @@ private:
     bool done_, success_;
 };
 
-class GetCubesPoses : public SyncActionNode {
+class GetCubesPoses : public StatefulActionNode {
 public:
     GetCubesPoses(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
-        : SyncActionNode(name, config) {
-        sub_ = node->create_subscription<find_cubes::msg::CubesPoses>(
-            "/cubes_poses", 10, [this](const find_cubes::msg::CubesPoses::SharedPtr msg) { last_msg_ = msg; });
+        : StatefulActionNode(name, config), node_(node) {
+        RCLCPP_INFO(this->node_->get_logger(), "creating GetCubesPoses");
+        
+        sub_ = this->node_->create_subscription<find_cubes::msg::CubesPoses>(
+            "/cubes_poses", 10, [this](const find_cubes::msg::CubesPoses::SharedPtr msg) { 
+                last_msg_ = msg; 
+            });
     }
 
     static PortsList providedPorts() {
-        return { OutputPort<geometry_msgs::msg::Pose>("cube1_pose"), OutputPort<geometry_msgs::msg::Pose>("cube2_pose") };
+        return { 
+            OutputPort<geometry_msgs::msg::Pose>("cube1_pose"), 
+            OutputPort<geometry_msgs::msg::Pose>("cube2_pose") 
+        };
     }
 
-    NodeStatus tick() override {
-        if (!last_msg_) return NodeStatus::FAILURE;
-        for (size_t i = 0; i < last_msg_->ids.size(); ++i) {
-            if (last_msg_->ids[i] == id_cube1) setOutput("cube1_pose", last_msg_->poses[i]);
-            if (last_msg_->ids[i] == id_cube2) setOutput("cube2_pose", last_msg_->poses[i]);
-        }
-        return NodeStatus::SUCCESS;
+    NodeStatus onStart() override {
+        last_msg_ = nullptr;
+        RCLCPP_INFO(this->node_->get_logger(), "Waiting for /cubes_poses message...");
+        return NodeStatus::RUNNING;
     }
+
+    NodeStatus onRunning() override {
+        if (!last_msg_) {
+            return NodeStatus::RUNNING;
+        }
+
+        bool found_cube1 = false;
+        bool found_cube2 = false;
+
+        for (size_t i = 0; i < last_msg_->ids.size(); ++i) {
+            if (last_msg_->ids[i] == id_cube1) {
+                setOutput("cube1_pose", last_msg_->poses[i]);
+                found_cube1 = true;
+            }
+            if (last_msg_->ids[i] == id_cube2) {
+                setOutput("cube2_pose", last_msg_->poses[i]);
+                found_cube2 = true;
+            }
+        }
+
+        if (found_cube1 && found_cube2) {
+            RCLCPP_INFO(this->node_->get_logger(), "Both cubes detected successfully.");
+            return NodeStatus::SUCCESS;
+        } else {
+            RCLCPP_WARN(this->node_->get_logger(), "Message received but one or both cubes are missing. Still waiting...");
+            last_msg_ = nullptr;
+            return NodeStatus::RUNNING;
+        }
+    }
+
+    void onHalted() override {}
 
     static constexpr int id_cube1 = 1, id_cube2 = 10;
+
 private:
+    rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<find_cubes::msg::CubesPoses>::SharedPtr sub_;
     find_cubes::msg::CubesPoses::SharedPtr last_msg_;
 };
