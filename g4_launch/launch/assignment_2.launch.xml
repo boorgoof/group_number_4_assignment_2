@@ -9,9 +9,7 @@
         <arg name="use_sim_time" value="$(var sim)"/>
     </include>
 
-    <node pkg="motion_controller" exec="robot_manipulator_node" name="robot_manipulator" output="screen">
-        <param name="use_sim_time" value="$(var sim)"/>
-    </node>
+    <include file="$(find-pkg-share motion_controller)/launch/motion_controller.launch.py"/>
 
     <include file="$(find-pkg-share logic_controller)/launch/robot_logic_controller.launch.xml">
         <arg name="use_sim_time" value="$(var sim)"/>
