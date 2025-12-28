@@ -1,4 +1,6 @@
 #include "motion_controller/robot_manipulator.hpp"
+#include <chrono>
+#include <thread>
 
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -26,6 +28,10 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
 }
 
 void RobotManipulator::init_moveit() {
+  RCLCPP_INFO(this->get_logger(), "Waiting for MoveIt services to initialize...");
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+  RCLCPP_INFO(this->get_logger(), "Starting MoveIt initialization");
+  
   arm_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
       shared_from_this(), "ir_arm");
 
@@ -51,8 +57,7 @@ rclcpp_action::GoalResponse RobotManipulator::handle_go_home_goal(
   return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-rclcpp_action::CancelResponse RobotManipulator::handle_go_home_cancel(
-    const std::shared_ptr<GoHomeGoalHandle> goal_handle) {
+rclcpp_action::CancelResponse RobotManipulator::handle_go_home_cancel(const std::shared_ptr<GoHomeGoalHandle> goal_handle) {
   (void)goal_handle;
   RCLCPP_INFO(this->get_logger(), "Received cancel request for go_home");
   return rclcpp_action::CancelResponse::ACCEPT;
