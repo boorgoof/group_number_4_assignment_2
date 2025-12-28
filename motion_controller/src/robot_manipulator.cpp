@@ -172,8 +172,7 @@ void RobotManipulator::execute_move_cube(
 
 bool RobotManipulator::go_to_home() {
   RCLCPP_INFO(this->get_logger(), "Going to home");
-  std::vector<double> joint_values = {2.478,  -1.728, -0.803,
-                                      -2.112, -4.590, -0.925};
+  std::vector<double> joint_values = {2.5, -1.75, -0.8, -2.0, -4.5, -0.9};
   arm_group_->setJointValueTarget(joint_values);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
