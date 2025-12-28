@@ -1,11 +1,12 @@
 <root BTCPP_format="4">
     <BehaviorTree ID="MainTree">
         <Sequence name="SwapRoutine">
-            <Action ID="GoHome"/>
             
             <RetryUntilSuccessful num_attempts="5">
                 <Action ID="GetCubesPoses" cube1_pose="{cube1_pose}" cube2_pose="{cube2_pose}"/>
             </RetryUntilSuccessful>
+
+            <Action ID="GoHome"/>
 
             <Fallback name="SwapWithRecovery">
                 <Sequence name="SwapSteps">
