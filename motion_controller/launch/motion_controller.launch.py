@@ -6,6 +6,9 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 
 def generate_launch_description():
+
+
+
     moveit_config = MoveItConfigsBuilder("ir_gripper", package_name="ir_movit_config").to_moveit_configs()
 
     use_sim_time_arg = DeclareLaunchArgument(
@@ -14,7 +17,14 @@ def generate_launch_description():
         description='Use simulation (Gazebo) clock if true'
     )
 
+    initial_delay_arg = DeclareLaunchArgument(
+        'initial_delay',
+        default_value='0.0',
+        description='Seconds to wait before starting the node'
+    )
+
     use_sim_time = LaunchConfiguration('use_sim_time')
+    initial_delay = LaunchConfiguration('initial_delay')
 
     motion_controller_node = Node(
         package="motion_controller",
@@ -25,9 +35,11 @@ def generate_launch_description():
             moveit_config.to_dict(),
         ],
         output="screen",
+        prefix=['bash -c "sleep ', initial_delay, '; $0 $@"']
     )
 
     return LaunchDescription([
         use_sim_time_arg,
+        initial_delay_arg,
         motion_controller_node
     ])

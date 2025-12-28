@@ -11,6 +11,7 @@
 
     <include file="$(find-pkg-share motion_controller)/launch/motion_controller.launch.py">
         <arg name="use_sim_time" value="$(var sim)"/>
+        <arg name="initial_delay" value="4.0"/>
     </include>
 
     <include file="$(find-pkg-share logic_controller)/launch/robot_logic_controller.launch.xml">
