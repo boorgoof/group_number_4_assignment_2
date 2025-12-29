@@ -29,7 +29,7 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
 
 void RobotManipulator::init_moveit() {
   RCLCPP_INFO(this->get_logger(), "Waiting for MoveIt services to initialize...");
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   RCLCPP_INFO(this->get_logger(), "Starting MoveIt initialization");
   
   arm_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
@@ -43,6 +43,7 @@ void RobotManipulator::init_moveit() {
   arm_group_->setMaxAccelerationScalingFactor(1.0);
   arm_group_->setPlanningTime(10.0);
   arm_group_->setNumPlanningAttempts(10);
+  arm_group_->setPoseReferenceFrame("base_link");
 
   RCLCPP_INFO(this->get_logger(), "MoveIt ready");
 }
@@ -99,6 +100,20 @@ void RobotManipulator::execute_go_home(
   result->success = true;
   result->message = "Robot at home position with gripper open";
   goal_handle->succeed(result);
+
+  geometry_msgs::msg::PoseStamped current_pose = arm_group_->getCurrentPose();
+
+  // 2. Access coordinates
+  double x = current_pose.pose.position.x;
+  double y = current_pose.pose.position.y;
+  double z = current_pose.pose.position.z;
+  double rx = current_pose.pose.orientation.x;
+  double ry = current_pose.pose.orientation.y;
+  double rz = current_pose.pose.orientation.z;
+  double rw = current_pose.pose.orientation.w;
+
+
+  RCLCPP_INFO(this->get_logger(), "Current Gripper Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
 
   RCLCPP_INFO(this->get_logger(), "Go home action completed");
 }
@@ -194,6 +209,19 @@ bool RobotManipulator::go_to_home() {
 bool RobotManipulator::go_to_pose(const geometry_msgs::msg::Pose &target) {
   arm_group_->setPoseTarget(target);
 
+  geometry_msgs::msg::PoseStamped target_pose = arm_group_->getPoseTarget();
+
+  RCLCPP_INFO(this->get_logger(), "Target Cartesian Pose:\n"
+              "Position: [x: %f, y: %f, z: %f]\n"
+              "Orientation: [x: %f, y: %f, z: %f, w: %f]",
+              target_pose.pose.position.x,
+              target_pose.pose.position.y,
+              target_pose.pose.position.z,
+              target_pose.pose.orientation.x,
+              target_pose.pose.orientation.y,
+              target_pose.pose.orientation.z,
+              target_pose.pose.orientation.w);
+
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success =
       (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
@@ -228,10 +256,10 @@ bool RobotManipulator::set_gripper(bool open) {
 bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
   geometry_msgs::msg::Pose approach_pose = target;
   approach_pose.position.z += approach_offset_;
-  approach_pose.orientation.w = 0.0;
-  approach_pose.orientation.x = 1.0;
-  approach_pose.orientation.y = 0.0;
-  approach_pose.orientation.z = 0.0;
+  //approach_pose.orientation.w = 0.0;
+  //approach_pose.orientation.x = 1.0;
+  //approach_pose.orientation.y = 0.0;
+  //approach_pose.orientation.z = 0.0;
 
   if (!go_to_pose(approach_pose))
     return false;
@@ -258,10 +286,10 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   geometry_msgs::msg::Pose approach_pose = target;
   approach_pose.position.z += approach_offset_;
-  approach_pose.orientation.w = 0.0;
-  approach_pose.orientation.x = 1.0;
-  approach_pose.orientation.y = 0.0;
-  approach_pose.orientation.z = 0.0;
+  //approach_pose.orientation.w = 0.0;
+  //approach_pose.orientation.x = 1.0;
+  //approach_pose.orientation.y = 0.0;
+  //approach_pose.orientation.z = 0.0;
 
   if (!go_to_pose(approach_pose))
     return false;

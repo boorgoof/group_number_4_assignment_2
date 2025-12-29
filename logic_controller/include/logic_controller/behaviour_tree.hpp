@@ -68,6 +68,33 @@ public:
         getInput("to", goal.pose_to);
         getInput("use_waypoint", goal.use_waypoint);
 
+        goal.pose_from.orientation.z = 1.0;
+        goal.pose_from.orientation.w = 0.0;
+
+        goal.pose_to.orientation.z = 1.0;
+        goal.pose_to.orientation.w = 0.0;
+        
+
+        double x = goal.pose_from.position.x;
+        double y = goal.pose_from.position.y;
+        double z = goal.pose_from.position.z;
+        double rx = goal.pose_from.orientation.x;
+        double ry = goal.pose_from.orientation.y;
+        double rz = goal.pose_from.orientation.z;
+        double rw = goal.pose_from.orientation.w;
+        RCLCPP_INFO(node_->get_logger(), "Target FROM Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
+
+        x = goal.pose_to.position.x;
+        y = goal.pose_to.position.y;
+        z = goal.pose_to.position.z;
+        rx = goal.pose_to.orientation.x;
+        ry = goal.pose_to.orientation.y;
+        rz = goal.pose_to.orientation.z;
+        rw = goal.pose_to.orientation.w;
+        RCLCPP_INFO(node_->get_logger(), "Target TO Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
+
+
+
         if (goal.use_waypoint){
             getInput("waypoint_pose", goal.waypoint_pose);
             getInput("waypoint_wait_time", goal.waypoint_wait_time);
