@@ -32,18 +32,21 @@ void RobotManipulator::init_moveit() {
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   RCLCPP_INFO(this->get_logger(), "Starting MoveIt initialization");
   
-  arm_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-      shared_from_this(), "ir_arm");
+  arm_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>( shared_from_this(), "ir_arm");
 
-  gripper_group_ =
-      std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-          shared_from_this(), "ir_gripper");
+  gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>( shared_from_this(), "ir_gripper");
 
   arm_group_->setMaxVelocityScalingFactor(1.0);
   arm_group_->setMaxAccelerationScalingFactor(1.0);
   arm_group_->setPlanningTime(10.0);
   arm_group_->setNumPlanningAttempts(10);
   arm_group_->setPoseReferenceFrame("base_link");
+
+  gripper_group_->setMaxVelocityScalingFactor(1.0);
+  gripper_group_->setMaxAccelerationScalingFactor(1.0);
+  gripper_group_->setPlanningTime(10.0);
+  gripper_group_->setNumPlanningAttempts(10);
+  gripper_group_->setPoseReferenceFrame("base_link");
 
   RCLCPP_INFO(this->get_logger(), "MoveIt ready");
 }

@@ -68,10 +68,10 @@ public:
         getInput("to", goal.pose_to);
         getInput("use_waypoint", goal.use_waypoint);
 
-        goal.pose_from.orientation.z = 1.0;
+        goal.pose_from.orientation.z = -1.0;
         goal.pose_from.orientation.w = 0.0;
 
-        goal.pose_to.orientation.z = 1.0;
+        goal.pose_to.orientation.z = -1.0;
         goal.pose_to.orientation.w = 0.0;
         
 
