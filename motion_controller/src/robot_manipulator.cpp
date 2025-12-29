@@ -47,6 +47,7 @@ void RobotManipulator::init_moveit() {
   gripper_group_->setPlanningTime(10.0);
   gripper_group_->setNumPlanningAttempts(10);
   gripper_group_->setPoseReferenceFrame("base_link");
+  arm_group_->setEndEffectorLink("tool0");
 
   RCLCPP_INFO(this->get_logger(), "MoveIt ready");
 }
