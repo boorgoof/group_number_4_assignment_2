@@ -9,8 +9,8 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
     : Node("robot_manipulator", options) {
   RCLCPP_INFO(this->get_logger(), "Initializing RobotManipulator");
 
-  approach_offset_ = 0.2;
-  grasp_height_ = 0.0;
+  approach_offset_ = 0.12;
+  grasp_height_ = 0.05;
 
   go_home_action_server_ = rclcpp_action::create_server<GoHome>(
       this, "go_home",
@@ -265,9 +265,15 @@ bool RobotManipulator::set_gripper(bool open) {
 
 bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
   RCLCPP_INFO(this->get_logger(), "Starting pick operation");
+
+  //eraseeee !!!!
+  //geometry_msgs::msg::Pose temp_target = target;
+  //temp_target.position.x = 0.0;
+  //temp_target.position.y = -0.6;
+  //temp_target.position.z = 0.7;
   
   // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = target;
+  geometry_msgs::msg::Pose approach_pose = target; //set in target!!!!
   approach_pose.orientation = target.orientation;  // Use orientation from target
   approach_pose.position.z += approach_offset_;
   
@@ -315,9 +321,15 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 
 bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   RCLCPP_INFO(this->get_logger(), "Starting place operation");
+
+  //eraseeee !!!!
+  //geometry_msgs::msg::Pose temp_target = target;
+  //temp_target.position.x = 0.4;
+  //temp_target.position.y = 0.0;
+  //temp_target.position.z = 0.7;
   
   // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = target;
+  geometry_msgs::msg::Pose approach_pose = target; //set in target!!!!!
   approach_pose.orientation = target.orientation;  // Use orientation from target
   approach_pose.position.z += approach_offset_;
   
