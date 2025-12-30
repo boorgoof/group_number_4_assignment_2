@@ -24,6 +24,9 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
       std::bind(&RobotManipulator::handle_move_cube_cancel, this, _1),
       std::bind(&RobotManipulator::handle_move_cube_accepted, this, _1));
 
+  gripper_client_ = rclcpp_action::create_client<GripperCommand>(
+      this, "/gripper_controller/gripper_cmd");
+
   RCLCPP_INFO(this->get_logger(), "RobotManipulator initialized");
 }
 
@@ -190,9 +193,7 @@ void RobotManipulator::execute_move_cube(const std::shared_ptr<MoveCubeGoalHandl
 bool RobotManipulator::go_to_home() {
   RCLCPP_INFO(this->get_logger(), "Going to home");
   std::vector<double> joint_values = {2.5, -1.75, -0.8, -2.0, -4.5, -0.9};
-  rclcpp::sleep_for(std::chrono::milliseconds(500));
   arm_group_->setJointValueTarget(joint_values);
-  rclcpp::sleep_for(std::chrono::milliseconds(500));
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success =
       (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
@@ -303,7 +304,7 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 
   // Step 4: Close gripper to grasp object
   RCLCPP_INFO(this->get_logger(), "Closing gripper to grasp object");
-  if (!set_gripper(false)) {
+  if (!set_gripper_action(0.8, 10.0)) {  // 0.8 = close, 0.0 = open 
     RCLCPP_WARN(this->get_logger(), "Failed to close gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(800));
@@ -367,3 +368,64 @@ bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   RCLCPP_INFO(this->get_logger(), "Place operation completed successfully");
   return true;
 }
+
+bool RobotManipulator::set_gripper_action(double position, double max_effort) {
+  RCLCPP_INFO(this->get_logger(), "=== set_gripper_action called: position=%f, max_effort=%f ===", position, max_effort);
+  
+  // Wait for the action server to be available
+  RCLCPP_INFO(this->get_logger(), "Waiting for gripper action server...");
+  if (!gripper_client_->wait_for_action_server(std::chrono::seconds(2))) {
+    RCLCPP_WARN(this->get_logger(), "Gripper action server NOT available, falling back to MoveIt control");
+    // Fallback to MoveIt gripper control
+    // Gripper positions: 0.0 = open, 0.8 = close (from SRDF)
+    if (position > 0.4) {  // Threshold at midpoint
+      RCLCPP_INFO(this->get_logger(), "Fallback: Closing gripper with MoveIt (position=%f > 0.4)", position);
+      return set_gripper(false);  // Close
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Fallback: Opening gripper with MoveIt (position=%f <= 0.4)", position);
+      return set_gripper(true);   // Open
+    }
+  }
+
+  RCLCPP_INFO(this->get_logger(), "Gripper action server IS available!");
+
+  // Create the goal
+  GripperCommand::Goal gripper_goal;
+  gripper_goal.command.position = position;
+  gripper_goal.command.max_effort = max_effort;
+
+  RCLCPP_INFO(this->get_logger(), "Sending gripper goal: position=%f, effort=%f", position, max_effort);
+
+  // Send the goal asynchronously
+  auto send_goal_options = rclcpp_action::Client<GripperCommand>::SendGoalOptions();
+  
+  send_goal_options.result_callback = 
+    [this](const GoalHandleGripper::WrappedResult & result) {
+      switch (result.code) {
+        case rclcpp_action::ResultCode::SUCCEEDED:
+          RCLCPP_INFO(this->get_logger(), "Gripper action succeeded");
+          break;
+        case rclcpp_action::ResultCode::ABORTED:
+          RCLCPP_ERROR(this->get_logger(), "Gripper action was aborted");
+          break;
+        case rclcpp_action::ResultCode::CANCELED:
+          RCLCPP_ERROR(this->get_logger(), "Gripper action was canceled");
+          break;
+        default:
+          RCLCPP_ERROR(this->get_logger(), "Unknown gripper action result code");
+          break;
+      }
+    };
+
+  auto goal_handle_future = gripper_client_->async_send_goal(gripper_goal, send_goal_options);
+  
+  // Simple wait without spinning (just sleep to give it time to execute)
+  RCLCPP_INFO(this->get_logger(), "Waiting 2 seconds for gripper action to complete...");
+  rclcpp::sleep_for(std::chrono::milliseconds(2000));
+  
+  RCLCPP_INFO(this->get_logger(), "Gripper command sent and wait completed");
+  return true;
+}
+
+
+

@@ -3,6 +3,7 @@
 
 #include "motion_controller/action/go_home.hpp"
 #include "motion_controller/action/move_cube.hpp"
+#include <control_msgs/action/gripper_command.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -18,6 +19,8 @@ private:
   using MoveCube = motion_controller::action::MoveCube;
   using GoHomeGoalHandle = rclcpp_action::ServerGoalHandle<GoHome>;
   using MoveCubeGoalHandle = rclcpp_action::ServerGoalHandle<MoveCube>;
+  using GripperCommand = control_msgs::action::GripperCommand;
+  using GoalHandleGripper = rclcpp_action::ClientGoalHandle<GripperCommand>;
 
   rclcpp_action::GoalResponse
   handle_go_home_goal(const rclcpp_action::GoalUUID &uuid,
@@ -46,6 +49,7 @@ private:
   bool go_to_home();
   bool go_to_pose(const geometry_msgs::msg::Pose &target);
   bool set_gripper(bool open);
+  bool set_gripper_action(double position, double max_effort = 10.0);
   bool pick_operation(const geometry_msgs::msg::Pose &target);
   bool place_operation(const geometry_msgs::msg::Pose &target);
 
@@ -55,6 +59,7 @@ private:
 
   rclcpp_action::Server<GoHome>::SharedPtr go_home_action_server_;
   rclcpp_action::Server<MoveCube>::SharedPtr move_cube_action_server_;
+  rclcpp_action::Client<GripperCommand>::SharedPtr gripper_client_;
 
   double approach_offset_;
   double grasp_height_;

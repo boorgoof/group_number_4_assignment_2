@@ -117,7 +117,7 @@ public:
     }
 
     NodeStatus onRunning() override {
-        RCLCPP_INFO(this->node_->get_logger(), "running MoveCubeAction");
+        // RCLCPP_INFO(this->node_->get_logger(), "running MoveCubeAction");
         if (!done_) return NodeStatus::RUNNING;
         return success_ ? NodeStatus::SUCCESS : NodeStatus::FAILURE;
     }
