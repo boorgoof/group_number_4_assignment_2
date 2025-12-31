@@ -9,8 +9,8 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
     : Node("robot_manipulator", options) {
   RCLCPP_INFO(this->get_logger(), "Initializing RobotManipulator");
 
-  approach_offset_ = 0.2;
-  grasp_height_ = 0.1;
+  approach_offset_ = 0.22;
+  grasp_height_ = 0.15;
 
   go_home_action_server_ = rclcpp_action::create_server<GoHome>(
       this, "go_home",
@@ -39,14 +39,14 @@ void RobotManipulator::init_moveit() {
 
   gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>( shared_from_this(), "ir_gripper");
 
-  arm_group_->setMaxVelocityScalingFactor(0.5);
-  arm_group_->setMaxAccelerationScalingFactor(0.5);
+  arm_group_->setMaxVelocityScalingFactor(0.2);
+  arm_group_->setMaxAccelerationScalingFactor(0.2);
   arm_group_->setPlanningTime(10.0);
   arm_group_->setNumPlanningAttempts(10);
   arm_group_->setPoseReferenceFrame("base_link");
 
-  gripper_group_->setMaxVelocityScalingFactor(0.5);
-  gripper_group_->setMaxAccelerationScalingFactor(0.5);
+  gripper_group_->setMaxVelocityScalingFactor(0.2);
+  gripper_group_->setMaxAccelerationScalingFactor(0.2);
   gripper_group_->setPlanningTime(10.0);
   gripper_group_->setNumPlanningAttempts(10);
   gripper_group_->setPoseReferenceFrame("base_link");
@@ -327,7 +327,7 @@ bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   }
 
   // Step 2: Descend to drop position (same x, y, but lower z)
-  geometry_msgs::msg::Pose drop_pose = target;
+  geometry_msgs::msg::Pose drop_pose = approx_target;
   drop_pose.orientation = target.orientation;
   drop_pose.position.z += grasp_height_;
   
