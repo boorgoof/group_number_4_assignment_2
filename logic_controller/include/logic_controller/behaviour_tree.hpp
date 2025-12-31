@@ -9,6 +9,7 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "motion_controller/action/move_cube.hpp"
 #include "motion_controller/action/go_home.hpp"
+#include "find_cubes/action/detect_color.hpp"
 #include "find_cubes/msg/cubes_poses.hpp"
 
 namespace BT
@@ -193,7 +194,7 @@ public:
         last_msg_ = nullptr;
         
         if (!getInput("settling_time", settling_time_)) {
-            settling_time_ = 3.0; // Default if not provided in XML
+            settling_time_ = 3.0;
         }
         
         RCLCPP_INFO(node_->get_logger(), "Stabilizing cubes for %.1f seconds...", settling_time_);
@@ -236,6 +237,92 @@ private:
     find_cubes::msg::CubesPoses::SharedPtr last_msg_;
     rclcpp::Time start_time_;
     double settling_time_;
+};
+
+class GetCubeColorAction : public StatefulActionNode {
+public:
+    GetCubeColorAction(const std::string& name, const BT::NodeConfig& config, rclcpp::Node::SharedPtr node)
+        : StatefulActionNode(name, config), node_(node) {
+        client_ = rclcpp_action::create_client<find_cubes::action::DetectColor>(node_, "detect_color");
+    }
+
+    static PortsList providedPorts() {
+        return { 
+            InputPort<geometry_msgs::msg::Pose>("cube_pose"),
+            InputPort<int>("id")
+            //OutputPort<std::string>("color")
+        };
+    }
+
+    NodeStatus onStart() override {
+        if (!client_->wait_for_action_server(std::chrono::seconds(2))) {
+            RCLCPP_ERROR(node_->get_logger(), "Action server /detect_color not available");
+            return NodeStatus::FAILURE;
+        }
+
+        if (!getInput("id", id_)) {
+            RCLCPP_ERROR(node_->get_logger(), "Missing id from action tree");
+            return NodeStatus::FAILURE;
+        }
+
+        auto goal = find_cubes::action::DetectColor::Goal();
+
+        geometry_msgs::msg::Pose pose_val;
+        if (!getInput("cube_pose", pose_val)) {
+            RCLCPP_ERROR(node_->get_logger(), "Missing cube_pose in GetCubeColorAction");
+            return NodeStatus::FAILURE;
+        }
+
+        goal.cube_pose_base.header.frame_id = "base_link";
+        goal.cube_pose_base.header.stamp = node_->now();
+        goal.cube_pose_base.pose = pose_val;
+
+        auto send_goal_options = rclcpp_action::Client<find_cubes::action::DetectColor>::SendGoalOptions();
+        
+        send_goal_options.result_callback = [this](const auto& result) {
+            done_ = true;
+            status_code_ = result.code;
+            if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
+                detected_color_ = result.result->color;
+            }
+        };
+
+        send_goal_options.feedback_callback = [this](auto, const auto feedback) {
+            RCLCPP_INFO(node_->get_logger(), "Color detection status: %s", feedback->status.c_str());
+        };
+
+        client_->async_send_goal(goal, send_goal_options);
+        
+        done_ = false;
+        RCLCPP_INFO(node_->get_logger(), "Sent color detection request...");
+        return NodeStatus::RUNNING;
+    }
+
+    NodeStatus onRunning() override {
+        if (!done_) return NodeStatus::RUNNING;
+
+        if (status_code_ == rclcpp_action::ResultCode::SUCCEEDED) {
+            RCLCPP_INFO(node_->get_logger(), "Successfully detected color: %s for cube %d", detected_color_.c_str(), id_);
+            //setOutput("color", detected_color_);
+            return NodeStatus::SUCCESS;
+        }
+        
+        RCLCPP_ERROR(node_->get_logger(), "Color detection failed for cube %d", id_);
+        return NodeStatus::FAILURE;
+    }
+
+    void onHalted() override {
+        client_->async_cancel_all_goals();
+    }
+
+private:
+    rclcpp::Node::SharedPtr node_;
+    rclcpp_action::Client<find_cubes::action::DetectColor>::SharedPtr client_;
+    
+    bool done_ = false;
+    std::string detected_color_;
+    rclcpp_action::ResultCode status_code_;
+    int id_;
 };
 
 #endif

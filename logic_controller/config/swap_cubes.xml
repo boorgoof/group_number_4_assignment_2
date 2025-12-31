@@ -8,11 +8,17 @@
 
             <Action ID="GoHome"/>
 
+            <Action ID="GetCubeColor" cube_pose="{cube1_pose}" id="1"/>
+            <Action ID="GetCubeColor" cube_pose="{cube2_pose}" id="10"/>
+
             <Fallback name="SwapWithRecovery">
                 <Sequence name="SwapSteps">
-                    <Action ID="MoveCube" from="0.0; -0.60; 0.5; 1.0; 0.0; 0.0; 0.0" to="0.5; -0.1; 0.5; 1.0; 0.0; 0.0; 0.0" use_waypoint="true" waypoint_pose="0.0; -0.2; 0.5; 0.0; -0.3827; 0.0; 0.9239" waypoint_wait_time="2.0"/>
-                    <Action ID="MoveCube" from="0.6; 0.00; 0.5; 1.0; 0.0; 0.0; 0.0" to="0.0; -0.60; 0.5; 1.0; 0.0; 0.0; 0.0" use_waypoint="true" waypoint_pose="0.0; -0.2; 0.5; 0.0; -0.3827; 0.0; 0.9239" waypoint_wait_time="2.0"/>
-                    <Action ID="MoveCube" from="0.5; -0.1; 0.5; 1.0; 0.0; 0.0; 0.0" to="0.6; 0.00; 0.5; 1.0; 0.0; 0.0; 0.0" use_waypoint="false"/>
+                    <Action ID="MoveCube" from="{cube1_pose}" to="0.5; -0.1; 0.5; 1.0; 0.0; 0.0; 0.0" use_waypoint="false" waypoint_pose="0.0; -0.60; 0.6; 1.0; 0.0; 0.0; 0.0" waypoint_wait_time="2.0"/>
+                    <Action ID="MoveCube" from="{cube2_pose}" to="{cube1_pose}" use_waypoint="false" waypoint_pose="0.0; -0.60; 0.6; 1.0; 0.0; 0.0; 0.0" waypoint_wait_time="2.0"/>
+                    
+                    <Action ID="GetCubeColor" cube_pose="{cube1_pose}" id="10"/>
+
+                    <Action ID="MoveCube" from="0.5; -0.1; 0.5; 1.0; 0.0; 0.0; 0.0" to="{cube2_pose}" use_waypoint="false"/>
                 </Sequence>
 
                 <Sequence name="RecoveryLogic">

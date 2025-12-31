@@ -304,7 +304,7 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 
   // Step 4: Close gripper to grasp object
   RCLCPP_INFO(this->get_logger(), "Closing gripper to grasp object");
-  if (!set_gripper_action(0.8, 10.0)) {  // 0.8 = close, 0.0 = open 
+  if (!set_gripper_action(0.8, 20.0)) {  // 0.8 = close, 0.0 = open 
     RCLCPP_WARN(this->get_logger(), "Failed to close gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(800));
