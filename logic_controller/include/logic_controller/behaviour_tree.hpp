@@ -174,8 +174,6 @@ class GetCubesPoses : public StatefulActionNode {
 public:
     GetCubesPoses(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
-        RCLCPP_INFO(this->node_->get_logger(), "creating GetCubesPoses");
-        
         sub_ = this->node_->create_subscription<find_cubes::msg::CubesPoses>(
             "/cubes_poses", 10, [this](const find_cubes::msg::CubesPoses::SharedPtr msg) { 
                 last_msg_ = msg; 
@@ -185,53 +183,59 @@ public:
     static PortsList providedPorts() {
         return { 
             OutputPort<geometry_msgs::msg::Pose>("cube1_pose"), 
-            OutputPort<geometry_msgs::msg::Pose>("cube2_pose") 
+            OutputPort<geometry_msgs::msg::Pose>("cube2_pose"),
+            InputPort<double>("settling_time", 3.0, "Time to wait for cubes to land") 
         };
     }
 
     NodeStatus onStart() override {
+        start_time_ = node_->now();
         last_msg_ = nullptr;
-        RCLCPP_INFO(this->node_->get_logger(), "Waiting for /cubes_poses message...");
+        
+        if (!getInput("settling_time", settling_time_)) {
+            settling_time_ = 3.0; // Default if not provided in XML
+        }
+        
+        RCLCPP_INFO(node_->get_logger(), "Stabilizing cubes for %.1f seconds...", settling_time_);
         return NodeStatus::RUNNING;
     }
 
     NodeStatus onRunning() override {
-        if (!last_msg_) {
-            return NodeStatus::RUNNING;
-        }
+        auto elapsed = (node_->now() - start_time_).seconds();
 
-        bool found_cube1 = false;
-        bool found_cube2 = false;
-
-        for (size_t i = 0; i < last_msg_->ids.size(); ++i) {
-            if (last_msg_->ids[i] == id_cube1) {
-                setOutput("cube1_pose", last_msg_->poses[i]);
-                found_cube1 = true;
-            }
-            if (last_msg_->ids[i] == id_cube2) {
-                setOutput("cube2_pose", last_msg_->poses[i]);
-                found_cube2 = true;
+        // While we are waiting, if we get a message, update the outputs
+        // This ensures the blackboard always has the "most recent" info
+        if (last_msg_) {
+            for (size_t i = 0; i < last_msg_->ids.size(); ++i) {
+                if (last_msg_->ids[i] == id_cube1) setOutput("cube1_pose", last_msg_->poses[i]);
+                if (last_msg_->ids[i] == id_cube2) setOutput("cube2_pose", last_msg_->poses[i]);
             }
         }
 
-        if (found_cube1 && found_cube2) {
-            RCLCPP_INFO(this->node_->get_logger(), "Both cubes detected successfully.");
-            return NodeStatus::SUCCESS;
-        } else {
-            RCLCPP_WARN(this->node_->get_logger(), "Message received but one or both cubes are missing. Still waiting...");
-            last_msg_ = nullptr;
-            return NodeStatus::RUNNING;
+        // Check if the settling time has passed
+        if (elapsed >= settling_time_) {
+            if (last_msg_) {
+                RCLCPP_INFO(node_->get_logger(), "Cubes stabilized. Proceeding with swap.");
+                return NodeStatus::SUCCESS;
+            } else {
+                RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, 
+                                     "Time expired but no cube messages received!");
+                return NodeStatus::FAILURE;
+            }
         }
+
+        return NodeStatus::RUNNING;
     }
 
     void onHalted() override {}
 
     static constexpr int id_cube1 = 1, id_cube2 = 10;
-
 private:
     rclcpp::Node::SharedPtr node_;
     rclcpp::Subscription<find_cubes::msg::CubesPoses>::SharedPtr sub_;
     find_cubes::msg::CubesPoses::SharedPtr last_msg_;
+    rclcpp::Time start_time_;
+    double settling_time_;
 };
 
 #endif
