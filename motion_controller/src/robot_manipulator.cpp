@@ -9,8 +9,8 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
     : Node("robot_manipulator", options) {
   RCLCPP_INFO(this->get_logger(), "Initializing RobotManipulator");
 
-  approach_offset_ = 0.12;
-  grasp_height_ = 0.05;
+  approach_offset_ = 0.2;
+  grasp_height_ = 0.1;
 
   go_home_action_server_ = rclcpp_action::create_server<GoHome>(
       this, "go_home",
@@ -39,14 +39,14 @@ void RobotManipulator::init_moveit() {
 
   gripper_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>( shared_from_this(), "ir_gripper");
 
-  arm_group_->setMaxVelocityScalingFactor(0.6);
-  arm_group_->setMaxAccelerationScalingFactor(0.6);
+  arm_group_->setMaxVelocityScalingFactor(0.5);
+  arm_group_->setMaxAccelerationScalingFactor(0.5);
   arm_group_->setPlanningTime(10.0);
   arm_group_->setNumPlanningAttempts(10);
   arm_group_->setPoseReferenceFrame("base_link");
 
-  gripper_group_->setMaxVelocityScalingFactor(0.6);
-  gripper_group_->setMaxAccelerationScalingFactor(0.6);
+  gripper_group_->setMaxVelocityScalingFactor(0.5);
+  gripper_group_->setMaxAccelerationScalingFactor(0.5);
   gripper_group_->setPlanningTime(10.0);
   gripper_group_->setNumPlanningAttempts(10);
   gripper_group_->setPoseReferenceFrame("base_link");
@@ -192,11 +192,11 @@ void RobotManipulator::execute_move_cube(const std::shared_ptr<MoveCubeGoalHandl
 
 bool RobotManipulator::go_to_home() {
   RCLCPP_INFO(this->get_logger(), "Going to home");
-  std::vector<double> joint_values = {2.5, -1.75, -0.8, -2.0, -4.5, -0.9};
+  std::vector<double> joint_values = {2.5, -1.75, -0.8, -2.0, -4.6, 1.0};
   arm_group_->setJointValueTarget(joint_values);
   moveit::planning_interface::MoveGroupInterface::Plan plan;
-  bool success =
-      (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+
+  bool success = (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
 
   if (success) {
     arm_group_->execute(plan);
@@ -208,18 +208,6 @@ bool RobotManipulator::go_to_home() {
 bool RobotManipulator::go_to_pose(const geometry_msgs::msg::Pose &target) {
   arm_group_->setPoseTarget(target);
   rclcpp::sleep_for(std::chrono::milliseconds(500));
-  geometry_msgs::msg::PoseStamped target_pose = arm_group_->getPoseTarget();
-
-  RCLCPP_INFO(this->get_logger(), "Target Cartesian Pose:\n"
-              "Position: [x: %f, y: %f, z: %f]\n"
-              "Orientation: [x: %f, y: %f, z: %f, w: %f]",
-              target_pose.pose.position.x,
-              target_pose.pose.position.y,
-              target_pose.pose.position.z,
-              target_pose.pose.orientation.x,
-              target_pose.pose.orientation.y,
-              target_pose.pose.orientation.z,
-              target_pose.pose.orientation.w);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success =(arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
@@ -267,14 +255,13 @@ bool RobotManipulator::set_gripper(bool open) {
 bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
   RCLCPP_INFO(this->get_logger(), "Starting pick operation");
 
-  //eraseeee !!!!
-  //geometry_msgs::msg::Pose temp_target = target;
-  //temp_target.position.x = 0.0;
-  //temp_target.position.y = -0.6;
-  //temp_target.position.z = 0.7;
-  
+  geometry_msgs::msg::Pose approx_target = target;
+  approx_target.position.x = std::round(target.position.x * 10.0) / 10.0;
+  approx_target.position.y = std::round(target.position.y * 10.0) / 10.0;
+  approx_target.position.z = std::round(target.position.z * 10.0) / 10.0;
+
   // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = target; //set in target!!!!
+  geometry_msgs::msg::Pose approach_pose = approx_target; //set in target!!!!
   approach_pose.orientation = target.orientation;  // Use orientation from target
   approach_pose.position.z += approach_offset_;
   
@@ -292,7 +279,7 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
   rclcpp::sleep_for(std::chrono::milliseconds(500));
 
   // Step 3: Descend to grasp position (same x, y, but lower z)
-  geometry_msgs::msg::Pose grasp_pose = target;
+  geometry_msgs::msg::Pose grasp_pose = approx_target;
   grasp_pose.orientation = target.orientation;
   grasp_pose.position.z += grasp_height_;
   
@@ -304,7 +291,7 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 
   // Step 4: Close gripper to grasp object
   RCLCPP_INFO(this->get_logger(), "Closing gripper to grasp object");
-  if (!set_gripper_action(0.8, 20.0)) {  // 0.8 = close, 0.0 = open 
+  if (!set_gripper_action(0.8, 10.0)) {  // 0.8 = close, 0.0 = open 
     RCLCPP_WARN(this->get_logger(), "Failed to close gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(800));
@@ -323,14 +310,13 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   RCLCPP_INFO(this->get_logger(), "Starting place operation");
 
-  //eraseeee !!!!
-  //geometry_msgs::msg::Pose temp_target = target;
-  //temp_target.position.x = 0.4;
-  //temp_target.position.y = 0.0;
-  //temp_target.position.z = 0.7;
+  geometry_msgs::msg::Pose approx_target = target;
+  approx_target.position.x = std::round(target.position.x * 10.0) / 10.0;
+  approx_target.position.y = std::round(target.position.y * 10.0) / 10.0;
+  approx_target.position.z = std::round(target.position.z * 10.0) / 10.0;
   
   // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = target; //set in target!!!!!
+  geometry_msgs::msg::Pose approach_pose = approx_target; //set in target!!!!!
   approach_pose.orientation = target.orientation;  // Use orientation from target
   approach_pose.position.z += approach_offset_;
   
@@ -377,7 +363,7 @@ bool RobotManipulator::set_gripper_action(double position, double max_effort) {
   if (!gripper_client_->wait_for_action_server(std::chrono::seconds(2))) {
     RCLCPP_WARN(this->get_logger(), "Gripper action server NOT available, falling back to MoveIt control");
     // Fallback to MoveIt gripper control
-    // Gripper positions: 0.0 = open, 0.8 = close (from SRDF)
+    // Gripper positions: 0.0 = open, 0.8 = close 
     if (position > 0.4) {  // Threshold at midpoint
       RCLCPP_INFO(this->get_logger(), "Fallback: Closing gripper with MoveIt (position=%f > 0.4)", position);
       return set_gripper(false);  // Close
