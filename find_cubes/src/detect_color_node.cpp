@@ -65,6 +65,7 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
 
     
     if (!has_camera_info_) {
+        RCLCPP_INFO(this->get_logger(), "camera_info is not available");
         feedback->status = "camera_info is not available";
         goal_handle->publish_feedback(feedback);
         result->color = "unknown";
@@ -76,6 +77,7 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
     {
         std::lock_guard<std::mutex> lock(image_mutex_);
         if (last_image_.empty()) {
+            RCLCPP_INFO(this->get_logger(), "image is not available");
             feedback->status = "image is not available";
             goal_handle->publish_feedback(feedback);
             result->color = "unknown";
@@ -85,9 +87,10 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
         image = last_image_.clone();
     }
 
-    // from base_link to camera frame
+    // from world (in this case base_link) to camera frame
     geometry_msgs::msg::PoseStamped pose_cam;
     if (!transform_base_to_camera(pose_base, pose_cam)) {
+        RCLCPP_INFO(this->get_logger(), "transformation base link to camera failed");
         feedback->status = "transformation base link to camera failed";
         goal_handle->publish_feedback(feedback);
         result->color = "unknown";
@@ -95,12 +98,14 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
         return;
     }
 
+    RCLCPP_INFO(this->get_logger(), "transformation base link to camera done correctly");
     feedback->status = "transformation base link to camera done";
     goal_handle->publish_feedback(feedback);
 
     // from camera frame to image pixel
     double u = 0.0, v = 0.0;
     if (!project_point_to_image(pose_cam, u, v)) {
+        RCLCPP_INFO(this->get_logger(), "Projection to image failed");
         feedback->status = "Projection to image failed";
         goal_handle->publish_feedback(feedback);
         result->color = "unknown";
@@ -108,7 +113,7 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
         return;
     }
 
-    // color estimation
+    // now we have the image and the position in the image to do the color estimation
     std::string color = estimate_color_at_pixel(image, u, v);
 
     feedback->status = "Color estimated: " + color;
@@ -130,7 +135,7 @@ void DetectColorNode::image_callback(const sensor_msgs::msg::Image::SharedPtr ms
         last_image_ = cv_ptr->image.clone();
         last_image_stamp_ = msg->header.stamp;
     } catch (const cv_bridge::Exception & e) {
-        RCLCPP_ERROR(get_logger(), "cv_bridge exception: %s", e.what());
+        RCLCPP_ERROR(get_logger(), "exception: %s", e.what());
     }
 }
 
@@ -189,37 +194,45 @@ std::string DetectColorNode::estimate_color_at_pixel(const cv::Mat & image, doub
     int cx = static_cast<int>(std::round(u));
     int cy = static_cast<int>(std::round(v));
 
-    // we take a small square region around the pixel 
-    const int half_size = 15; 
+    // dimension Region Of Interest (ROI)
+    const int roi_size = 15;
 
-    int x = std::max(0, cx - half_size);
-    int y = std::max(0, cy - half_size);
-    int w = std::min(2 * half_size, image.cols - x);
-    int h = std::min(2 * half_size, image.rows - y);
+    // we take the colored part of the cube (not the apriltag)
+    const int vertical_offset = 35;   
 
-    if (w <= 0 || h <= 0) {
-        return "unknown";
-    }
 
-    cv::Rect roi_rect(x, y, w, h);
+    int cx_shifted = cx;
+    int cy_shifted = cy + vertical_offset;
+
+    int x = std::max(0, cx_shifted - roi_size / 2);
+    int y = std::max(0, cy_shifted - roi_size / 2);
+
+    // to be sure ROI is inside the image (but we know that is always true)
+    x = std::min(x, image.cols - roi_size);
+    y = std::min(y, image.rows - roi_size);
+
+    if (x < 0 || y < 0 || x + roi_size > image.cols || y + roi_size > image.rows)
+        return "unknown"; // ROI is out of image 
+
+    cv::Rect roi_rect(x, y, roi_size, roi_size);
     cv::Mat roi = image(roi_rect);
 
+    
+    // we use HSV color space to estimate the color
     cv::Mat roi_hsv;
     cv::cvtColor(roi, roi_hsv, cv::COLOR_BGR2HSV);
 
     cv::Scalar mean_hsv = cv::mean(roi_hsv);
-    double H = mean_hsv[0]; 
+    double H = mean_hsv[0];
     double S = mean_hsv[1];
     double V = mean_hsv[2];
 
-    // we define simple thresholds for red and blue colors
-    if (S > 50 && V > 50) {
-        if (H < 15 || H > 160) {
-            return "red";
-        }
-        if (H > 90 && H < 140) {
-            return "blue";
-        }
+    if (S > 50 && V > 50)
+    {
+        if (H < 15 || H > 160) return "red";
+        if (H >= 20 && H < 30) return "yellow";
+        if (H >= 30 && H < 85) return "green";
+        if (H > 90 && H < 140) return "blue";
     }
 
     return "unknown";

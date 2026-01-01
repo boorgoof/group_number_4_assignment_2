@@ -40,7 +40,6 @@ private:
     // Publisher
     rclcpp::Publisher<find_cubes::msg::CubesPoses>::SharedPtr cubes_pub_;
 
-
     // Frames 
     std::string tag_frame_prefix_ = "tag36h11:";
     std::string base_link_frame_ = "base_link";
