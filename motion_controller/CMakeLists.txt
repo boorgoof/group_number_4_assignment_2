@@ -12,6 +12,7 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(control_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -35,6 +36,7 @@ ament_target_dependencies(robot_manipulator_node
   moveit_ros_planning_interface
   geometry_msgs
   tf2_ros
+  control_msgs
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} rosidl_typesupport_cpp)
@@ -44,6 +46,11 @@ target_link_libraries(robot_manipulator_node "${cpp_typesupport_target}" ${CURL_
 
 install(TARGETS robot_manipulator_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install launch files
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

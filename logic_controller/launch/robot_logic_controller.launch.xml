@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="use_sim_time" default="true" />
+  <arg name="initial_delay" default="0.0" />
+
+  <node pkg="logic_controller" exec="robot_logic_controller_node" 
+        name="robot_logic_controller_node" 
+        output="screen" 
+        launch-prefix="bash -c 'sleep $(var initial_delay); $0 $@' ">
+    <param name="use_sim_time" value="$(var use_sim_time)" />
+  </node>
+   
+</launch>

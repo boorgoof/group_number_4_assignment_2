@@ -32,8 +32,7 @@ FindCubesPositionNode::FindCubesPositionNode() : Node("find_cubes_position_node"
 void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
     if (msg->detections.size() != 2) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Apriltags detected: %zu (we want = 2)", msg->detections.size());
+        // RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Apriltags detected: %zu (we want = 2)", msg->detections.size());
         return;
     }
 
@@ -41,26 +40,24 @@ void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTa
     const int id1 = msg->detections[1].id;
 
     if (!((id0 == 1 && id1 == 10) || (id0 == 10 && id1 == 1))) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Unexpected tag IDs: [%d, %d]. Expected {1,10}", id0, id1);
+        // RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Unexpected tag IDs: [%d, %d]. Expected {1,10}", id0, id1);
         return;
     }
 
-    geometry_msgs::msg::PoseStamped red_pose;
-    geometry_msgs::msg::PoseStamped blue_pose;
+    geometry_msgs::msg::PoseStamped first_cube_pose;
+    geometry_msgs::msg::PoseStamped second_cube_pose;
 
-    //todo modify with colors
-    const std::string frame_red  = tag_frame_prefix_ + "1";
-    const std::string frame_blue = tag_frame_prefix_ + "10";
+    const std::string first_cube_frame  = tag_frame_prefix_ + std::to_string(id0);
+    const std::string second_cube_frame = tag_frame_prefix_ + std::to_string(id1);
 
-    if (!get_pose_in_frame(base_link_frame_, frame_red, msg->header.stamp, red_pose)) {
+    if (!get_pose_in_frame(base_link_frame_, first_cube_frame, msg->header.stamp, first_cube_pose)) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "TF lookup failed: %s -> %s", base_link_frame_.c_str(), frame_red.c_str());
+        "TF lookup failed: %s -> %s", base_link_frame_.c_str(), first_cube_frame.c_str());
         return;
     }
-    if (!get_pose_in_frame(base_link_frame_, frame_blue, msg->header.stamp, blue_pose)) {
+    if (!get_pose_in_frame(base_link_frame_, second_cube_frame, msg->header.stamp, second_cube_pose)) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "TF lookup failed: %s -> %s", base_link_frame_.c_str(), frame_blue.c_str());
+        "TF lookup failed: %s -> %s", base_link_frame_.c_str(), second_cube_frame.c_str());
         return;
     }
 
@@ -70,8 +67,8 @@ void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTa
 
     out.ids = {1, 10};
     out.poses.clear();
-    out.poses.push_back(red_pose.pose);
-    out.poses.push_back(blue_pose.pose);
+    out.poses.push_back(first_cube_pose.pose);
+    out.poses.push_back(second_cube_pose.pose);
 
     if (!has_previous_ || poses_changed(previous_, out)) {
         cubes_pub_->publish(out);
@@ -79,7 +76,7 @@ void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTa
         has_previous_ = true;
 
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
-            "Published /cubes_poses: red(%.3f,%.3f) blue(%.3f,%.3f)",
+            "Published /cubes_poses: first(%.3f,%.3f) second(%.3f,%.3f)",
             out.poses[0].position.x, out.poses[0].position.y,
             out.poses[1].position.x, out.poses[1].position.y);
     }
