@@ -16,11 +16,6 @@
                     <Action ID="MoveCube" from="{cube1_pose}" to="0.5; -0.1; 0.4; 1.0; 0.0; 0.0; 0.0" use_waypoint="false"/>
                     <Action ID="MoveCube" from="{cube2_pose}" to="{cube1_pose}" use_waypoint="false"/>
                     <Action ID="MoveCube" from="0.5; -0.1; 0.4; 1.0; 0.0; 0.0; 0.0" to="{cube2_pose}" use_waypoint="false"/>
-                    
-                    
-                    <Action ID="GetCubeColor" cube_pose="{cube1_pose}" id="10"/>
-                    
-                    
                 </Sequence>
 
                 <Sequence name="RecoveryLogic">
@@ -29,8 +24,8 @@
                 </Sequence>
             </Fallback>
 
+            <Action ID="GetCubeColor" cube_pose="{cube1_pose}" id="10"/>
             <Action ID="GoHome"/>
         </Sequence>
     </BehaviorTree>
 </root>
-
