@@ -32,24 +32,21 @@ FindCubesPositionNode::FindCubesPositionNode() : Node("find_cubes_position_node"
 void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTagDetectionArray::SharedPtr msg)
 {
     if (msg->detections.size() != 2) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Apriltags detected: %zu (we want = 2)", msg->detections.size());
-        // return;
+        // RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Apriltags detected: %zu (we want = 2)", msg->detections.size());
+        return;
     }
 
     const int id0 = msg->detections[0].id;
     const int id1 = msg->detections[1].id;
 
     if (!((id0 == 1 && id1 == 10) || (id0 == 10 && id1 == 1))) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
-        "Unexpected tag IDs: [%d, %d]. Expected {1,10}", id0, id1);
-        //return;
+        // RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Unexpected tag IDs: [%d, %d]. Expected {1,10}", id0, id1);
+        return;
     }
 
     geometry_msgs::msg::PoseStamped first_cube_pose;
     geometry_msgs::msg::PoseStamped second_cube_pose;
 
-    //todo modify with colors
     const std::string first_cube_frame  = tag_frame_prefix_ + std::to_string(id0);
     const std::string second_cube_frame = tag_frame_prefix_ + std::to_string(id1);
 
