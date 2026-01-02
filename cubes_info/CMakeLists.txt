@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(find_cubes)
+project(cubes_info)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -36,13 +36,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 ament_export_dependencies(rosidl_default_runtime)
 
-add_executable(find_cubes_nodes
+add_executable(find_cubes_info
   src/find_cubes_position_node.cpp
   src/detect_color_node.cpp
   src/main.cpp
 )
 
-ament_target_dependencies(find_cubes_nodes
+ament_target_dependencies(find_cubes_info
   rclcpp
   rclcpp_action
   sensor_msgs
@@ -56,13 +56,13 @@ ament_target_dependencies(find_cubes_nodes
 
 
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
-target_link_libraries(find_cubes_nodes 
+target_link_libraries(find_cubes_info 
   ${cpp_typesupport_target}
   ${OpenCV_LIBRARIES})
 
 
 install(TARGETS
-  find_cubes_nodes
+  find_cubes_info
   DESTINATION lib/${PROJECT_NAME}
 )
 

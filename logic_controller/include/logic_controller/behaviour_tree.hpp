@@ -9,8 +9,10 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "motion_controller/action/move_cube.hpp"
 #include "motion_controller/action/go_home.hpp"
-#include "find_cubes/action/detect_color.hpp"
-#include "find_cubes/msg/cubes_poses.hpp"
+#include "cubes_info/msg/cubes_poses.hpp"
+#include "cubes_info/action/detect_color.hpp"
+
+
 
 namespace BT
 {
@@ -175,8 +177,8 @@ class GetCubesPoses : public StatefulActionNode {
 public:
     GetCubesPoses(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
-        sub_ = this->node_->create_subscription<find_cubes::msg::CubesPoses>(
-            "/cubes_poses", 10, [this](const find_cubes::msg::CubesPoses::SharedPtr msg) { 
+        sub_ = this->node_->create_subscription<cubes_info::msg::CubesPoses>(
+            "/cubes_poses", 10, [this](const cubes_info::msg::CubesPoses::SharedPtr msg) { 
                 last_msg_ = msg; 
             });
     }
@@ -233,8 +235,8 @@ public:
     static constexpr int id_cube1 = 1, id_cube2 = 10;
 private:
     rclcpp::Node::SharedPtr node_;
-    rclcpp::Subscription<find_cubes::msg::CubesPoses>::SharedPtr sub_;
-    find_cubes::msg::CubesPoses::SharedPtr last_msg_;
+    rclcpp::Subscription<cubes_info::msg::CubesPoses>::SharedPtr sub_;
+    cubes_info::msg::CubesPoses::SharedPtr last_msg_;
     rclcpp::Time start_time_;
     double settling_time_;
 };
@@ -243,7 +245,7 @@ class GetCubeColorAction : public StatefulActionNode {
 public:
     GetCubeColorAction(const std::string& name, const BT::NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
-        client_ = rclcpp_action::create_client<find_cubes::action::DetectColor>(node_, "detect_color");
+        client_ = rclcpp_action::create_client<cubes_info::action::DetectColor>(node_, "detect_color");
     }
 
     static PortsList providedPorts() {
@@ -265,7 +267,7 @@ public:
             return NodeStatus::FAILURE;
         }
 
-        auto goal = find_cubes::action::DetectColor::Goal();
+        auto goal = cubes_info::action::DetectColor::Goal();
 
         geometry_msgs::msg::Pose pose_val;
         if (!getInput("cube_pose", pose_val)) {
@@ -277,7 +279,7 @@ public:
         goal.cube_pose_base.header.stamp = node_->now();
         goal.cube_pose_base.pose = pose_val;
 
-        auto send_goal_options = rclcpp_action::Client<find_cubes::action::DetectColor>::SendGoalOptions();
+        auto send_goal_options = rclcpp_action::Client<cubes_info::action::DetectColor>::SendGoalOptions();
         
         send_goal_options.result_callback = [this](const auto& result) {
             done_ = true;
@@ -317,7 +319,7 @@ public:
 
 private:
     rclcpp::Node::SharedPtr node_;
-    rclcpp_action::Client<find_cubes::action::DetectColor>::SharedPtr client_;
+    rclcpp_action::Client<cubes_info::action::DetectColor>::SharedPtr client_;
     
     bool done_ = false;
     std::string detected_color_;

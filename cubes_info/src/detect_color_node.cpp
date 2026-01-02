@@ -227,7 +227,7 @@ std::string DetectColorNode::estimate_color_at_pixel(const cv::Mat & image, doub
     double S = mean_hsv[1];
     double V = mean_hsv[2];
 
-    // High saturation colors (vibrant colors)
+    // High saturation colors 
     if (S > 50 && V > 50)
     {
         if (H < 10 || H > 170) return "red";
@@ -239,14 +239,14 @@ std::string DetectColorNode::estimate_color_at_pixel(const cv::Mat & image, doub
         if (H >= 140 && H < 170) return "purple";
     }
     
-    // Low saturation, high value -> white or light colors
+    // Low saturation
     if (S < 50 && V > 150)
     {
         if (H >= 140 && H < 170 && S > 20) return "pink";
         return "white";
     }
     
-    // Medium saturation, medium value -> brown
+    // Medium saturation
     if (S > 30 && S < 100 && V > 30 && V < 120)
     {
         if (H >= 10 && H < 30) return "brown";

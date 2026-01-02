@@ -12,7 +12,7 @@ find_package(behaviortree_cpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 
-find_package(find_cubes REQUIRED)
+find_package(cubes_info REQUIRED)
 find_package(motion_controller REQUIRED)
 
 include_directories(include)
@@ -30,7 +30,7 @@ ament_target_dependencies(robot_logic_controller_node
   rclcpp
   rclcpp_action
   geometry_msgs
-  find_cubes
+  cubes_info 
   motion_controller
 )
 

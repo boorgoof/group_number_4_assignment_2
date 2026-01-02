@@ -17,12 +17,12 @@
 #include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "find_cubes/action/detect_color.hpp"
+#include "cubes_info/action/detect_color.hpp"
 
 class DetectColorNode : public rclcpp::Node
 {
 public:
-    using DetectColor = find_cubes::action::DetectColor;
+    using DetectColor = cubes_info::action::DetectColor;
     using GoalHandleDetectColor = rclcpp_action::ServerGoalHandle<DetectColor>;
 
     DetectColorNode();

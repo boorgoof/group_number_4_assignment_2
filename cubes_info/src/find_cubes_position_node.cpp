@@ -13,7 +13,7 @@ FindCubesPositionNode::FindCubesPositionNode() : Node("find_cubes_position_node"
     qos.transient_local();
     qos.reliable();
 
-    cubes_pub_ = this->create_publisher<find_cubes::msg::CubesPoses>("/cubes_poses", qos);
+    cubes_pub_ = this->create_publisher<cubes_info::msg::CubesPoses>("/cubes_poses", qos);
 
     detections_sub_ = this->create_subscription<apriltag_msgs::msg::AprilTagDetectionArray>(
         "/apriltag/detections",
@@ -50,18 +50,18 @@ void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTa
     const std::string first_cube_frame  = tag_frame_prefix_ + std::to_string(id0);
     const std::string second_cube_frame = tag_frame_prefix_ + std::to_string(id1);
 
-    if (!get_pose_in_frame(base_link_frame_, first_cube_frame, msg->header.stamp, first_cube_pose)) {
+    if (!get_pose_frame(base_link_frame_, first_cube_frame, msg->header.stamp, first_cube_pose)) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
         "TF lookup failed: %s -> %s", base_link_frame_.c_str(), first_cube_frame.c_str());
         return;
     }
-    if (!get_pose_in_frame(base_link_frame_, second_cube_frame, msg->header.stamp, second_cube_pose)) {
+    if (!get_pose_frame(base_link_frame_, second_cube_frame, msg->header.stamp, second_cube_pose)) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
         "TF lookup failed: %s -> %s", base_link_frame_.c_str(), second_cube_frame.c_str());
         return;
     }
 
-    find_cubes::msg::CubesPoses out;
+    cubes_info::msg::CubesPoses out;
     out.header.stamp = now();
     out.header.frame_id = base_link_frame_;
 
@@ -82,7 +82,7 @@ void FindCubesPositionNode::cubes_pos_callback(const apriltag_msgs::msg::AprilTa
     }
 }
 
-bool FindCubesPositionNode::get_pose_in_frame(const std::string & target_frame, const std::string & source_frame, const rclcpp::Time & stamp, geometry_msgs::msg::PoseStamped & out_pose)
+bool FindCubesPositionNode::get_pose_frame(const std::string & target_frame, const std::string & source_frame, const rclcpp::Time & stamp, geometry_msgs::msg::PoseStamped & out_pose)
 {
     geometry_msgs::msg::TransformStamped tf;
     try {
@@ -105,7 +105,7 @@ bool FindCubesPositionNode::get_pose_in_frame(const std::string & target_frame, 
     return true;
 }
 
-bool FindCubesPositionNode::poses_changed(const find_cubes::msg::CubesPoses & prev, const find_cubes::msg::CubesPoses & now_msg) const
+bool FindCubesPositionNode::poses_changed(const cubes_info::msg::CubesPoses & prev, const cubes_info::msg::CubesPoses & now_msg) const
 {
     if (prev.poses.size() != now_msg.poses.size())
         return true;
