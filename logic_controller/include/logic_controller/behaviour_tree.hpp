@@ -80,33 +80,11 @@ public:
         goal.pose_to.orientation.y = 0.0;
         goal.pose_to.orientation.z = 0.0;
         goal.pose_to.orientation.w = 0.0;
-        
-
-        double x = goal.pose_from.position.x;
-        double y = goal.pose_from.position.y;
-        double z = goal.pose_from.position.z;
-        double rx = goal.pose_from.orientation.x;
-        double ry = goal.pose_from.orientation.y;
-        double rz = goal.pose_from.orientation.z;
-        double rw = goal.pose_from.orientation.w;
-        RCLCPP_INFO(node_->get_logger(), "Target FROM Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
-
-        x = goal.pose_to.position.x;
-        y = goal.pose_to.position.y;
-        z = goal.pose_to.position.z;
-        rx = goal.pose_to.orientation.x;
-        ry = goal.pose_to.orientation.y;
-        rz = goal.pose_to.orientation.z;
-        rw = goal.pose_to.orientation.w;
-        RCLCPP_INFO(node_->get_logger(), "Target TO Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
-
-
 
         if (goal.use_waypoint){
             getInput("waypoint_pose", goal.waypoint_pose);
             getInput("waypoint_wait_time", goal.waypoint_wait_time);
         }
-        
 
         auto send_goal_options = rclcpp_action::Client<motion_controller::action::MoveCube>::SendGoalOptions();
         send_goal_options.result_callback = [this](const auto& result) { 
@@ -177,8 +155,14 @@ class GetCubesPoses : public StatefulActionNode {
 public:
     GetCubesPoses(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
         : StatefulActionNode(name, config), node_(node) {
+        auto sub_qos = rclcpp::QoS(rclcpp::KeepLast(1));
+        sub_qos.transient_local();
+        sub_qos.reliable();
+
         sub_ = this->node_->create_subscription<cubes_info::msg::CubesPoses>(
-            "/cubes_poses", 10, [this](const cubes_info::msg::CubesPoses::SharedPtr msg) { 
+            "/cubes_poses", 
+            sub_qos, 
+            [this](const cubes_info::msg::CubesPoses::SharedPtr msg) { 
                 last_msg_ = msg; 
             });
     }
@@ -206,8 +190,6 @@ public:
     NodeStatus onRunning() override {
         auto elapsed = (node_->now() - start_time_).seconds();
 
-        // While we are waiting, if we get a message, update the outputs
-        // This ensures the blackboard always has the "most recent" info
         if (last_msg_) {
             for (size_t i = 0; i < last_msg_->ids.size(); ++i) {
                 if (last_msg_->ids[i] == id_cube1) setOutput("cube1_pose", last_msg_->poses[i]);
@@ -215,7 +197,6 @@ public:
             }
         }
 
-        // Check if the settling time has passed
         if (elapsed >= settling_time_) {
             if (last_msg_) {
                 RCLCPP_INFO(node_->get_logger(), "Cubes stabilized. Proceeding with swap.");
