@@ -106,7 +106,6 @@ void RobotManipulator::execute_go_home(const std::shared_ptr<GoHomeGoalHandle> g
 
   geometry_msgs::msg::PoseStamped current_pose = arm_group_->getCurrentPose();
 
-  // 2. Access coordinates
   double x = current_pose.pose.position.x;
   double y = current_pose.pose.position.y;
   double z = current_pose.pose.position.z;
@@ -219,7 +218,6 @@ bool RobotManipulator::go_to_pose(const geometry_msgs::msg::Pose &target) {
   }
   geometry_msgs::msg::PoseStamped current_pose = arm_group_->getCurrentPose();
 
-  // 2. Access coordinates
   double x = current_pose.pose.position.x;
   double y = current_pose.pose.position.y;
   double z = current_pose.pose.position.z;
@@ -231,6 +229,43 @@ bool RobotManipulator::go_to_pose(const geometry_msgs::msg::Pose &target) {
 
   RCLCPP_INFO(this->get_logger(), "Current Arm Position: x: %f, y: %f, z: %f, rx: %f, ry: %f, rz: %f, rw: %f ", x, y, z, rx, ry, rz, rw);
 
+  return success;
+}
+
+bool RobotManipulator::cartesian_move_vertical(double z_offset) {
+  RCLCPP_INFO(this->get_logger(), "Executing Cartesian vertical movement of %.3f meters", z_offset);
+
+  geometry_msgs::msg::PoseStamped current_pose_stamped = arm_group_->getCurrentPose();
+  geometry_msgs::msg::Pose current_pose = current_pose_stamped.pose;
+  
+  geometry_msgs::msg::Pose target_pose = current_pose;
+  target_pose.position.z += z_offset;
+  
+  std::vector<geometry_msgs::msg::Pose> waypoints;
+  waypoints.push_back(target_pose);
+  
+  moveit_msgs::msg::RobotTrajectory trajectory;
+  const double eef_step = 0.001;  // 1mm resolution
+  
+  double fraction = arm_group_->computeCartesianPath(
+    waypoints,
+    eef_step,
+    trajectory
+  );
+  
+  RCLCPP_INFO(this->get_logger(), "Cartesian path computed: %.2f%% achieved", fraction * 100.0);
+  
+  moveit::planning_interface::MoveGroupInterface::Plan plan;
+  plan.trajectory = trajectory;
+  
+  auto result = arm_group_->execute(plan);
+  bool success = (result == moveit::core::MoveItErrorCode::SUCCESS);
+  
+  if (success) {
+    RCLCPP_INFO(this->get_logger(), "Cartesian vertical movement executed successfully");
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Failed to execute Cartesian path");
+  }
   return success;
 }
 
@@ -260,45 +295,45 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
   approx_target.position.y = std::round(target.position.y * 10.0) / 10.0;
   approx_target.position.z = std::round(target.position.z * 10.0) / 10.0;
 
-  // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = approx_target; //set in target!!!!
-  approach_pose.orientation = target.orientation;  // Use orientation from target
+  // Move to approach position
+  geometry_msgs::msg::Pose approach_pose = approx_target;
+  approach_pose.orientation = target.orientation;
   approach_pose.position.z += approach_offset_;
   
   RCLCPP_INFO(this->get_logger(), "Moving to approach position");
   if (!go_to_pose(approach_pose)) {
     RCLCPP_ERROR(this->get_logger(), "Failed to reach approach position");
-    //return false;
+    return false;
   }
 
-  // Step 2: Ensure gripper is open
+  // Ensure gripper is open
   RCLCPP_INFO(this->get_logger(), "Opening gripper");
   if (!set_gripper(true)) {
     RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(500));
 
-  // Step 3: Descend to grasp position (same x, y, but lower z)
-  geometry_msgs::msg::Pose grasp_pose = approx_target;
-  grasp_pose.orientation = target.orientation;
-  grasp_pose.position.z += grasp_height_;
+  // Descend to grasp position using Cartesian path
+  double descend_distance = -(approach_offset_ - grasp_height_);
   
-  RCLCPP_INFO(this->get_logger(), "Descending to grasp position");
-  if (!go_to_pose(grasp_pose)) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to reach grasp position");
-    //return false;
+  RCLCPP_INFO(this->get_logger(), "Descending to grasp position (Cartesian)");
+  if (!cartesian_move_vertical(descend_distance)) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to descend to grasp position");
+    return false;
   }
 
-  // Step 4: Close gripper to grasp object
+  // Close gripper to grasp object
   RCLCPP_INFO(this->get_logger(), "Closing gripper to grasp object");
   if (!set_gripper_action(0.8, 10.0)) {  // 0.8 = close, 0.0 = open 
     RCLCPP_WARN(this->get_logger(), "Failed to close gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(800));
 
-  // Step 5: Retreat to approach position
-  RCLCPP_INFO(this->get_logger(), "Retreating to approach position");
-  if (!go_to_pose(approach_pose)) {
+  // Retreat to approach position using Cartesian path
+  double ascend_distance = approach_offset_ - grasp_height_;
+  
+  RCLCPP_INFO(this->get_logger(), "Retreating to approach position (Cartesian)");
+  if (!cartesian_move_vertical(ascend_distance)) {
     RCLCPP_ERROR(this->get_logger(), "Failed to retreat to approach position");
     return false;
   }
@@ -315,9 +350,9 @@ bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
   approx_target.position.y = std::round(target.position.y * 10.0) / 10.0;
   approx_target.position.z = std::round(target.position.z * 10.0) / 10.0;
   
-  // Step 1: Move to approach position (x, y, z+approach_offset)
-  geometry_msgs::msg::Pose approach_pose = approx_target; //set in target!!!!!
-  approach_pose.orientation = target.orientation;  // Use orientation from target
+  // Move to approach position
+  geometry_msgs::msg::Pose approach_pose = approx_target;
+  approach_pose.orientation = target.orientation;
   approach_pose.position.z += approach_offset_;
   
   RCLCPP_INFO(this->get_logger(), "Moving to approach position");
@@ -326,27 +361,27 @@ bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
     return false;
   }
 
-  // Step 2: Descend to drop position (same x, y, but lower z)
-  geometry_msgs::msg::Pose drop_pose = approx_target;
-  drop_pose.orientation = target.orientation;
-  drop_pose.position.z += grasp_height_;
+  // Descend to drop position using Cartesian path
+  double descend_distance = -(approach_offset_ - grasp_height_);
   
-  RCLCPP_INFO(this->get_logger(), "Descending to drop position");
-  if (!go_to_pose(drop_pose)) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to reach drop position");
+  RCLCPP_INFO(this->get_logger(), "Descending to drop position (Cartesian)");
+  if (!cartesian_move_vertical(descend_distance)) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to descend to drop position");
     return false;
   }
 
-  // Step 3: Open gripper to release object
+  // Open gripper to release object
   RCLCPP_INFO(this->get_logger(), "Opening gripper to release object");
   if (!set_gripper(true)) {
     RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(500));
 
-  // Step 4: Retreat to approach position
-  RCLCPP_INFO(this->get_logger(), "Retreating to approach position");
-  if (!go_to_pose(approach_pose)) {
+  // Retreat to approach position using Cartesian path
+  double ascend_distance = approach_offset_ - grasp_height_;
+  
+  RCLCPP_INFO(this->get_logger(), "Retreating to approach position (Cartesian)");
+  if (!cartesian_move_vertical(ascend_distance)) {
     RCLCPP_ERROR(this->get_logger(), "Failed to retreat to approach position");
     return false;
   }
@@ -362,14 +397,14 @@ bool RobotManipulator::set_gripper_action(double position, double max_effort) {
   RCLCPP_INFO(this->get_logger(), "Waiting for gripper action server...");
   if (!gripper_client_->wait_for_action_server(std::chrono::seconds(2))) {
     RCLCPP_WARN(this->get_logger(), "Gripper action server NOT available, falling back to MoveIt control");
-    // Fallback to MoveIt gripper control
+    // MoveIt gripper control
     // Gripper positions: 0.0 = open, 0.8 = close 
-    if (position > 0.4) {  // Threshold at midpoint
+    if (position > 0.4) {
       RCLCPP_INFO(this->get_logger(), "Fallback: Closing gripper with MoveIt (position=%f > 0.4)", position);
-      return set_gripper(false);  // Close
+      return set_gripper(false);
     } else {
       RCLCPP_INFO(this->get_logger(), "Fallback: Opening gripper with MoveIt (position=%f <= 0.4)", position);
-      return set_gripper(true);   // Open
+      return set_gripper(true);
     }
   }
 
@@ -405,7 +440,6 @@ bool RobotManipulator::set_gripper_action(double position, double max_effort) {
 
   auto goal_handle_future = gripper_client_->async_send_goal(gripper_goal, send_goal_options);
   
-  // Simple wait without spinning (just sleep to give it time to execute)
   RCLCPP_INFO(this->get_logger(), "Waiting 2 seconds for gripper action to complete...");
   rclcpp::sleep_for(std::chrono::milliseconds(2000));
   

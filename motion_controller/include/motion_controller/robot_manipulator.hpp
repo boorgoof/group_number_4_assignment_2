@@ -48,6 +48,7 @@ private:
 
   bool go_to_home();
   bool go_to_pose(const geometry_msgs::msg::Pose &target);
+  bool cartesian_move_vertical(double z_offset);
   bool set_gripper(bool open);
   bool set_gripper_action(double position, double max_effort = 10.0);
   bool pick_operation(const geometry_msgs::msg::Pose &target);
