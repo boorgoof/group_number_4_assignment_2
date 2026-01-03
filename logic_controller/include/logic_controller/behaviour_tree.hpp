@@ -251,8 +251,8 @@ public:
     static PortsList providedPorts() {
         return { 
             InputPort<geometry_msgs::msg::Pose>("cube_pose"),
-            InputPort<int>("id")
-            //OutputPort<std::string>("color")
+            InputPort<int>("id"),
+            OutputPort<std::string>("color")
         };
     }
 
@@ -305,7 +305,7 @@ public:
 
         if (status_code_ == rclcpp_action::ResultCode::SUCCEEDED) {
             RCLCPP_INFO(node_->get_logger(), "Successfully detected color: %s for cube %d", detected_color_.c_str(), id_);
-            //setOutput("color", detected_color_);
+            setOutput("color", detected_color_);
             return NodeStatus::SUCCESS;
         }
         
@@ -326,5 +326,45 @@ private:
     rclcpp_action::ResultCode status_code_;
     int id_;
 };
+
+
+class DisplayCubeInfo : public SyncActionNode {
+public:
+    DisplayCubeInfo(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
+        : SyncActionNode(name, config), node_(node) {}
+
+    static PortsList providedPorts() {
+        return {
+            InputPort<int>("id"), InputPort<geometry_msgs::msg::Pose>("pose"), InputPort<std::string>("color"),
+        };
+    }
+
+    NodeStatus tick() override {
+        int id;
+        geometry_msgs::msg::Pose p;
+        std::string c;
+
+        if (!getInput("id", id) || 
+            !getInput("pose", p) ||
+            !getInput("color", c))
+        {
+            return NodeStatus::FAILURE;
+        }
+
+        std::cout << std::string(40, '=') << "\n";
+        printCube(id, p, c);
+        std::cout << std::string(40, '=') << "\n\n";
+
+        return NodeStatus::SUCCESS;
+    }
+
+private:
+    void printCube(int id, const geometry_msgs::msg::Pose& p, const std::string& c) {
+        printf("Cube ID: %d | Color: %-10s\n", id, c.c_str());
+        printf("Position: [x: %.3f, y: %.3f, z: %.3f]\n", p.position.x, p.position.y, p.position.z);
+    }
+    rclcpp::Node::SharedPtr node_;
+};
+
 
 #endif
