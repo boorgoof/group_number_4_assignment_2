@@ -9,6 +9,7 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "motion_controller/action/move_cube.hpp"
 #include "motion_controller/action/go_home.hpp"
+#include "motion_controller/action/reset.hpp"
 #include "cubes_info/msg/cubes_poses.hpp"
 #include "cubes_info/action/detect_color.hpp"
 
@@ -151,6 +152,47 @@ private:
     bool done_, success_;
 };
 
+
+class ResetAction : public StatefulActionNode {
+public:
+    ResetAction(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
+        : StatefulActionNode(name, config), node_(node) {
+        RCLCPP_INFO(this->node_->get_logger(), "creating ResetAction");
+        client_ = rclcpp_action::create_client<motion_controller::action::Reset>(node_, "reset");
+    }
+
+    static PortsList providedPorts() { return {}; }
+
+    NodeStatus onStart() override {
+        RCLCPP_INFO(this->node_->get_logger(), "starting ResetAction");
+        if (!client_->wait_for_action_server(std::chrono::seconds(10))) {
+            return NodeStatus::FAILURE;
+        }
+
+        auto goal = motion_controller::action::Reset::Goal();
+
+        auto send_goal_options = rclcpp_action::Client<motion_controller::action::Reset>::SendGoalOptions();
+
+        send_goal_options.result_callback = [this](const auto& result) { 
+            done_ = true; 
+            success_ = result.result->success;
+        };
+
+        client_->async_send_goal(goal, send_goal_options);
+        done_ = false;
+        return NodeStatus::RUNNING;
+    }
+
+    NodeStatus onRunning() override { RCLCPP_INFO(this->node_->get_logger(), "running ResetAction"); return done_ ? (success_ ? NodeStatus::SUCCESS : NodeStatus::FAILURE) : NodeStatus::RUNNING; }
+    void onHalted() override {}
+
+private:
+    rclcpp::Node::SharedPtr node_;
+    rclcpp_action::Client<motion_controller::action::Reset>::SharedPtr client_;
+    bool done_, success_;
+};
+
+
 class GetCubesPoses : public StatefulActionNode {
 public:
     GetCubesPoses(const std::string& name, const NodeConfig& config, rclcpp::Node::SharedPtr node)
@@ -177,7 +219,7 @@ public:
 
     NodeStatus onStart() override {
         start_time_ = node_->now();
-        last_msg_ = nullptr;
+        //last_msg_ = nullptr;
         
         if (!getInput("settling_time", settling_time_)) {
             settling_time_ = 3.0;
@@ -203,7 +245,7 @@ public:
                 return NodeStatus::SUCCESS;
             } else {
                 RCLCPP_WARN_THROTTLE(node_->get_logger(), *node_->get_clock(), 1000, 
-                                     "Time expired but no cube messages received!");
+                                     "Time expired but no new cubes' poses received!");
                 return NodeStatus::FAILURE;
             }
         }

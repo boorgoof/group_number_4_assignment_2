@@ -22,6 +22,11 @@ int main(int argc, char ** argv) {
                 return std::make_unique<GoHomeAction>(name, config, node);
             });
 
+        factory.registerBuilder<ResetAction>("Reset", 
+            [node](const std::string& name, const BT::NodeConfig& config) {
+                return std::make_unique<ResetAction>(name, config, node);
+            });
+
         factory.registerBuilder<GetCubesPoses>("GetCubesPoses", 
             [node](const std::string& name, const BT::NodeConfig& config) {
                 return std::make_unique<GetCubesPoses>(name, config, node);
