@@ -30,6 +30,10 @@ int main(int argc, char ** argv) {
             [node](const std::string& name, const BT::NodeConfig& config) {
                 return std::make_unique<GetCubeColorAction>(name, config, node);
             });
+        factory.registerBuilder<DisplayCubeInfo>("DisplayCubeInfo", 
+            [node](const std::string& name, const BT::NodeConfig& config) {
+                return std::make_unique<DisplayCubeInfo>(name, config, node);
+            });
 
         std::string pkg_share = ament_index_cpp::get_package_share_directory("logic_controller");
         auto tree = factory.createTreeFromFile(pkg_share + "/config/swap_cubes.xml");
