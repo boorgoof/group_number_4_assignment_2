@@ -28,7 +28,7 @@
 
             <Action ID="GetCubeColor" cube_pose="{cube1_pose}" id="10" color="{cube2_color}" />
 
-            <Action ID="GetCubesPoses" cube1_pose="{cube1_pose}" cube2_pose="{cube2_pose}" settling_time="1.0"/>
+            <Action ID="GetCubesPoses" cube1_pose="{cube1_pose}" cube2_pose="{cube2_pose}" settling_time="3.0"/>
 
             <Action ID="DisplayCubeInfo" id="1" pose="{cube1_pose}" color="{cube1_color}"/>
             <Action ID="DisplayCubeInfo" id="10" pose="{cube2_pose}" color="{cube2_color}"/>
