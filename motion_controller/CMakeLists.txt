@@ -18,6 +18,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/GoHome.action"
   "action/MoveCube.action"
+  "action/Reset.action"
   DEPENDENCIES geometry_msgs
 )
 

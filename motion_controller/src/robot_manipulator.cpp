@@ -24,6 +24,12 @@ RobotManipulator::RobotManipulator(const rclcpp::NodeOptions &options)
       std::bind(&RobotManipulator::handle_move_cube_cancel, this, _1),
       std::bind(&RobotManipulator::handle_move_cube_accepted, this, _1));
 
+  reset_action_server_ = rclcpp_action::create_server<Reset>(
+      this, "reset",
+      std::bind(&RobotManipulator::handle_reset_goal, this, _1, _2),
+      std::bind(&RobotManipulator::handle_reset_cancel, this, _1),
+      std::bind(&RobotManipulator::handle_reset_accepted, this, _1));
+
   gripper_client_ = rclcpp_action::create_client<GripperCommand>(
       this, "/gripper_controller/gripper_cmd");
 
@@ -189,10 +195,75 @@ void RobotManipulator::execute_move_cube(const std::shared_ptr<MoveCubeGoalHandl
   RCLCPP_INFO(this->get_logger(), "Move cube action completed");
 }
 
+// Reset action handlers
+rclcpp_action::GoalResponse RobotManipulator::handle_reset_goal(
+    const rclcpp_action::GoalUUID &uuid,
+    std::shared_ptr<const Reset::Goal> goal) {
+  (void)uuid;
+  (void)goal;
+  RCLCPP_INFO(this->get_logger(), "Received reset goal request");
+  return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse RobotManipulator::handle_reset_cancel(
+    const std::shared_ptr<ResetGoalHandle> goal_handle) {
+  (void)goal_handle;
+  RCLCPP_INFO(this->get_logger(), "Received cancel request for reset");
+  return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void RobotManipulator::handle_reset_accepted(
+    const std::shared_ptr<ResetGoalHandle> goal_handle) {
+  std::thread{
+      std::bind(&RobotManipulator::execute_reset, this, goal_handle)}
+      .detach();
+}
+
+void RobotManipulator::execute_reset(const std::shared_ptr<ResetGoalHandle> goal_handle) {
+  RCLCPP_INFO(this->get_logger(), "Executing reset action");
+
+  auto feedback = std::make_shared<Reset::Feedback>();
+  auto result = std::make_shared<Reset::Result>();
+
+  feedback->current_state = "Moving to initial position";
+  goal_handle->publish_feedback(feedback);
+
+  if (!reset()) {
+    result->success = false;
+    result->message = "Failed to move to initial position";
+    goal_handle->abort(result);
+    return;
+  }
+
+  feedback->current_state = "Completed";
+  goal_handle->publish_feedback(feedback);
+
+  result->success = true;
+  result->message = "Robot Reset";
+  goal_handle->succeed(result);
+
+  RCLCPP_INFO(this->get_logger(), "Reset action completed");
+}
+
 bool RobotManipulator::go_to_home() {
   RCLCPP_INFO(this->get_logger(), "Going to home");
   std::vector<double> joint_values = {2.5, -1.75, -0.8, -2.0, -4.6, 1.0};
   arm_group_->setJointValueTarget(joint_values);
+  moveit::planning_interface::MoveGroupInterface::Plan plan;
+
+  bool success = (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+
+  if (success) {
+    arm_group_->execute(plan);
+  }
+
+  return success;
+}
+
+bool RobotManipulator::reset() {
+  RCLCPP_INFO(this->get_logger(), "Going to home position");
+
+  arm_group_->setNamedTarget("home");
   moveit::planning_interface::MoveGroupInterface::Plan plan;
 
   bool success = (arm_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
