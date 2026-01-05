@@ -99,7 +99,7 @@ void RobotManipulator::execute_go_home(const std::shared_ptr<GoHomeGoalHandle> g
   feedback->current_state = "Opening gripper";
   goal_handle->publish_feedback(feedback);
 
-  if (!set_gripper(true)) {
+  if (!set_gripper_action(0.0, 10.0)) {
     RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
   }
 
@@ -379,7 +379,7 @@ bool RobotManipulator::pick_operation(const geometry_msgs::msg::Pose &target) {
 
   // Ensure gripper is open
   RCLCPP_INFO(this->get_logger(), "Opening gripper");
-  if (!set_gripper(true)) {
+  if (!set_gripper_action(0.0, 10.0)) {
     RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(500));
@@ -443,7 +443,7 @@ bool RobotManipulator::place_operation(const geometry_msgs::msg::Pose &target) {
 
   // Open gripper to release object
   RCLCPP_INFO(this->get_logger(), "Opening gripper to release object");
-  if (!set_gripper(true)) {
+  if (!set_gripper_action(0.0, 10.0)) {
     RCLCPP_WARN(this->get_logger(), "Failed to open gripper");
   }
   rclcpp::sleep_for(std::chrono::milliseconds(500));
