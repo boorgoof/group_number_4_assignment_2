@@ -47,6 +47,9 @@ Ensure you have a working ROS2 environment (Jazzy/Humble) and the necessary depe
     ```bash
     ros2 launch g4_launch assignment_2.launch.xml
     ```
+## Node Diagram
+<img src="./ros2_architecture.drawio.png"/>
+
 ## Simulation Video
 
 The simulation video can be downloaded [here](https://drive.google.com/file/d/1ojmJ-62V5ZM4hiCZ745qFtYTeBmRhsyO/view).
