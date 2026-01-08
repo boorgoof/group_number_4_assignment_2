@@ -32,7 +32,7 @@ DetectColorNode::DetectColorNode()
 rclcpp_action::GoalResponse DetectColorNode::handle_goal(const rclcpp_action::GoalUUID &, std::shared_ptr<const DetectColor::Goal> goal)
 {
     (void)goal;
-    RCLCPP_INFO(get_logger(), "Received goal request: detect the color of the cube in pose (%.2f, %.2f, %.2f) in base frame",
+    RCLCPP_INFO(get_logger(), "Received goal request: detect the color of the cube in pose (%.2f, %.2f, %.2f) in base_link frame",
                 goal->cube_pose_base.pose.position.x,
                 goal->cube_pose_base.pose.position.y,
                 goal->cube_pose_base.pose.position.z);
@@ -90,8 +90,8 @@ void DetectColorNode::execute(const std::shared_ptr<GoalHandleDetectColor> goal_
     // from world (in this case base_link) to camera frame
     geometry_msgs::msg::PoseStamped pose_cam;
     if (!transform_base_to_camera(pose_base, pose_cam)) {
-        RCLCPP_INFO(this->get_logger(), "transformation base link to camera failed");
-        feedback->status = "transformation base link to camera failed";
+        RCLCPP_INFO(this->get_logger(), "transformation base_link to camera failed");
+        feedback->status = "transformation base_link to camera failed";
         goal_handle->publish_feedback(feedback);
         result->color = "unknown";
         goal_handle->succeed(result);
@@ -162,7 +162,7 @@ bool DetectColorNode::transform_base_to_camera(const geometry_msgs::msg::PoseSta
     try {
         tf_buffer_->transform(pose_in_base, pose_cam, camera_frame_, tf2::durationFromSec(0.1));
     } catch (const tf2::TransformException & ex) {
-        RCLCPP_WARN(get_logger(), "TransformException base->camera: %s", ex.what());
+        RCLCPP_WARN(get_logger(), "TransformException base_link to camera: %s", ex.what());
         return false;
     }
 
