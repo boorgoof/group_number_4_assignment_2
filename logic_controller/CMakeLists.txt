@@ -19,6 +19,7 @@ include_directories(include)
 
 add_executable(robot_logic_controller_node 
   src/robot_controller.cpp
+  src/behaviour_tree.cpp
 )
 
 target_link_libraries(robot_logic_controller_node
